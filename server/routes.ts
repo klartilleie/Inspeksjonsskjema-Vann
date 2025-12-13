@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { inspectionFormSchema } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { generateInspectionPDF } from "./pdfGenerator";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -127,6 +128,28 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting inspection:", error);
       res.status(500).json({ error: "Failed to delete inspection" });
+    }
+  });
+
+  app.get("/api/inspections/:id/pdf", isAuthenticated, async (req, res) => {
+    try {
+      const inspection = await storage.getInspection(req.params.id);
+      if (!inspection) {
+        return res.status(404).json({ error: "Inspection not found" });
+      }
+
+      const doc = generateInspectionPDF(inspection);
+      
+      const filename = `befaring-${inspection.customerName.replace(/\s+/g, "-").toLowerCase()}-${inspection.id.slice(0, 8)}.pdf`;
+      
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      
+      doc.pipe(res);
+      doc.end();
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      res.status(500).json({ error: "Failed to generate PDF" });
     }
   });
 

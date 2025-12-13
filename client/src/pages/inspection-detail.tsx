@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import type { Inspection } from "@shared/schema";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
-import { ArrowLeft, User, MapPin, Mail, Phone, Calendar, Droplets, Thermometer, Plug, Wrench, Camera } from "lucide-react";
+import { ArrowLeft, User, MapPin, Mail, Phone, Calendar, Droplets, Thermometer, Plug, Wrench, Camera, FileDown } from "lucide-react";
 import logoUrl from "@assets/Lars_Logo-01_1765460766343.jpg";
 
 export default function InspectionDetail() {
@@ -81,12 +81,22 @@ export default function InspectionDetail() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4 flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
-            <ArrowLeft className="h-5 w-5" />
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => window.history.back()} data-testid="button-back">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <img src={logoUrl} alt="Klar til Leie AS" className="h-8 w-auto object-contain" />
+            <h1 className="text-xl font-semibold">Befaringsdetaljer</h1>
+          </div>
+          <Button
+            variant="default"
+            onClick={() => window.open(`/api/inspections/${params.id}/pdf`, "_blank")}
+            data-testid="button-download-pdf"
+          >
+            <FileDown className="h-4 w-4 mr-2" />
+            Last ned PDF
           </Button>
-          <img src={logoUrl} alt="Klar til Leie AS" className="h-8 w-auto object-contain" />
-          <h1 className="text-xl font-semibold">Befaringsdetaljer</h1>
         </div>
       </header>
 
