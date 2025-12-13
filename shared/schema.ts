@@ -9,6 +9,42 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
 });
 
+export const inspections = pgTable("inspections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  customerName: text("customer_name").notNull(),
+  customerAddress: text("customer_address").notNull(),
+  customerEmail: text("customer_email").notNull(),
+  customerPhone: text("customer_phone").notNull(),
+  inspectionDateTime: text("inspection_date_time").notNull(),
+  reportFilledBy: text("report_filled_by").notNull(),
+  hasPublicOrder: text("has_public_order").notNull(),
+  existingDrainageSolution: text("existing_drainage_solution").notNull(),
+  hasOwnWell: text("has_own_well").notNull(),
+  plannedSolutionType: text("planned_solution_type").notNull(),
+  distanceToNeighborBorder: text("distance_to_neighbor_border"),
+  hasNeighborConflict: text("has_neighbor_conflict").notNull(),
+  plannedPlacement: text("planned_placement").notNull(),
+  measuredClearance: text("measured_clearance"),
+  isNaturallyFrostFree: text("is_naturally_frost_free").notNull(),
+  frostProtectionMeasure: text("frost_protection_measure").notNull(),
+  frostProtectionOther: text("frost_protection_other"),
+  frostProtectionComments: text("frost_protection_comments"),
+  needsElectrician: text("needs_electrician").notNull(),
+  hasNearbyPowerPoint: text("has_nearby_power_point").notNull(),
+  powerPointDistance: text("power_point_distance"),
+  needsNewCircuit: boolean("needs_new_circuit"),
+  needsPlumber: text("needs_plumber").notNull(),
+  existingDrainPipe: text("existing_drain_pipe"),
+  outletPoint: text("outlet_point"),
+  otherProfessionals: text("other_professionals"),
+  technicalConnectionComments: text("technical_connection_comments"),
+  imagePaths: text("image_paths").array().notNull(),
+  imageCount: integer("image_count").notNull(),
+  imagesUploaded: boolean("images_uploaded").notNull(),
+  logisticsComments: text("logistics_comments"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -95,3 +131,5 @@ export type ClientInspectionFormData = z.infer<typeof clientInspectionFormSchema
 
 export const insertInspectionFormSchema = inspectionFormSchema;
 export type InsertInspectionForm = z.infer<typeof insertInspectionFormSchema>;
+
+export type Inspection = typeof inspections.$inferSelect;

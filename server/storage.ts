@@ -1,10 +1,13 @@
-import { type User, type InsertUser, type InspectionFormData } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-export interface Inspection extends InspectionFormData {
-  id: string;
-  createdAt: string;
-}
+import { eq, desc } from "drizzle-orm";
+import { db } from "./db";
+import { 
+  type User, 
+  type InsertUser, 
+  type InspectionFormData,
+  type Inspection,
+  users,
+  inspections
+} from "@shared/schema";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -13,54 +16,75 @@ export interface IStorage {
   createInspection(data: InspectionFormData): Promise<Inspection>;
   getInspection(id: string): Promise<Inspection | undefined>;
   getAllInspections(): Promise<Inspection[]>;
+  deleteInspection(id: string): Promise<boolean>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-  private inspections: Map<string, Inspection>;
-
-  constructor() {
-    this.users = new Map();
-    this.inspections = new Map();
-  }
-
+export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db.insert(users).values(insertUser).returning();
     return user;
   }
 
   async createInspection(data: InspectionFormData): Promise<Inspection> {
-    const id = randomUUID();
-    const inspection: Inspection = {
-      ...data,
-      id,
-      createdAt: new Date().toISOString(),
-    };
-    this.inspections.set(id, inspection);
+    const [inspection] = await db.insert(inspections).values({
+      customerName: data.customerName,
+      customerAddress: data.customerAddress,
+      customerEmail: data.customerEmail,
+      customerPhone: data.customerPhone,
+      inspectionDateTime: data.inspectionDateTime,
+      reportFilledBy: data.reportFilledBy,
+      hasPublicOrder: data.hasPublicOrder,
+      existingDrainageSolution: data.existingDrainageSolution,
+      hasOwnWell: data.hasOwnWell,
+      plannedSolutionType: data.plannedSolutionType,
+      distanceToNeighborBorder: data.distanceToNeighborBorder,
+      hasNeighborConflict: data.hasNeighborConflict,
+      plannedPlacement: data.plannedPlacement,
+      measuredClearance: data.measuredClearance,
+      isNaturallyFrostFree: data.isNaturallyFrostFree,
+      frostProtectionMeasure: data.frostProtectionMeasure,
+      frostProtectionOther: data.frostProtectionOther,
+      frostProtectionComments: data.frostProtectionComments,
+      needsElectrician: data.needsElectrician,
+      hasNearbyPowerPoint: data.hasNearbyPowerPoint,
+      powerPointDistance: data.powerPointDistance,
+      needsNewCircuit: data.needsNewCircuit,
+      needsPlumber: data.needsPlumber,
+      existingDrainPipe: data.existingDrainPipe,
+      outletPoint: data.outletPoint,
+      otherProfessionals: data.otherProfessionals,
+      technicalConnectionComments: data.technicalConnectionComments,
+      imagePaths: data.imagePaths,
+      imageCount: data.imageCount,
+      imagesUploaded: data.imagesUploaded,
+      logisticsComments: data.logisticsComments,
+    }).returning();
     return inspection;
   }
 
   async getInspection(id: string): Promise<Inspection | undefined> {
-    return this.inspections.get(id);
+    const [inspection] = await db.select().from(inspections).where(eq(inspections.id, id));
+    return inspection;
   }
 
   async getAllInspections(): Promise<Inspection[]> {
-    return Array.from(this.inspections.values()).sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    return db.select().from(inspections).orderBy(desc(inspections.createdAt));
+  }
+
+  async deleteInspection(id: string): Promise<boolean> {
+    const result = await db.delete(inspections).where(eq(inspections.id, id)).returning();
+    return result.length > 0;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
