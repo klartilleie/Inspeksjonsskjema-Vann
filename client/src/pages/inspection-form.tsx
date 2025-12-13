@@ -36,6 +36,7 @@ import {
   X,
   Loader2,
 } from "lucide-react";
+import logoUrl from "@assets/Lars_Logo-01_1765460766343.jpg";
 
 export default function InspectionForm() {
   const { toast } = useToast();
@@ -166,7 +167,8 @@ export default function InspectionForm() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto px-4 md:px-8 py-8">
-        <div className="mb-8">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <img src={logoUrl} alt="Klar til Leie AS" className="h-24 w-auto object-contain mb-4" />
           <h1 className="text-2xl md:text-3xl font-semibold text-foreground mb-2">
             Befaringsskjema: Lett Avløps-/Gråvannsystem
           </h1>

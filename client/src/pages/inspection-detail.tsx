@@ -1,0 +1,306 @@
+import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useParams } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import type { Inspection } from "@shared/schema";
+import { format } from "date-fns";
+import { nb } from "date-fns/locale";
+import { ArrowLeft, User, MapPin, Mail, Phone, Calendar, Droplets, Thermometer, Plug, Wrench, Camera } from "lucide-react";
+import logoUrl from "@assets/Lars_Logo-01_1765460766343.jpg";
+
+export default function InspectionDetail() {
+  const { toast } = useToast();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const params = useParams<{ id: string }>();
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      toast({
+        title: "Ikke autorisert",
+        description: "Logger inn...",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+    }
+  }, [isAuthenticated, authLoading, toast]);
+
+  const { data: inspection, isLoading } = useQuery<Inspection>({
+    queryKey: ["/api/inspections", params.id],
+    enabled: isAuthenticated && !!params.id,
+  });
+
+  if (authLoading || isLoading) {
+    return (
+      <div className="min-h-screen bg-background p-8">
+        <Skeleton className="h-96 w-full max-w-4xl mx-auto" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) return null;
+
+  if (!inspection) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="p-8 text-center">
+          <p className="text-muted-foreground">Skjema ikke funnet</p>
+          <Button className="mt-4" onClick={() => window.history.back()}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Tilbake
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
+  const translateValue = (value: string) => {
+    const translations: Record<string, string> = {
+      ja: "Ja",
+      nei: "Nei",
+      kommunalt: "Kommunalt avløp",
+      tett_tank: "Tett tank",
+      renseanlegg: "Renseanlegg",
+      ikke_aktuelt: "Ikke aktuelt",
+      bekk: "Utslipp til bekk/vann",
+      infiltrasjon: "Infiltrasjon",
+      ingen: "Ingen",
+      isolering: "Isolering",
+      varmekabel: "Varmekabel",
+      annet: "Annet",
+    };
+    return translations[value] || value;
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="border-b bg-card">
+        <div className="container mx-auto px-4 py-4 flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <img src={logoUrl} alt="Klar til Leie AS" className="h-8 w-auto object-contain" />
+          <h1 className="text-xl font-semibold">Befaringsdetaljer</h1>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <User className="h-5 w-5 text-muted-foreground" />
+              <CardTitle>Kundeinformasjon</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2">
+            <div>
+              <p className="text-sm text-muted-foreground">Navn</p>
+              <p className="font-medium">{inspection.customerName}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" /> Adresse</p>
+              <p className="font-medium">{inspection.customerAddress}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground flex items-center gap-1"><Mail className="h-3 w-3" /> E-post</p>
+              <p className="font-medium">{inspection.customerEmail}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground flex items-center gap-1"><Phone className="h-3 w-3" /> Telefon</p>
+              <p className="font-medium">{inspection.customerPhone}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground flex items-center gap-1"><Calendar className="h-3 w-3" /> Befaringsdato</p>
+              <p className="font-medium">{inspection.inspectionDateTime}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Rapport fylt ut av</p>
+              <p className="font-medium">{inspection.reportFilledBy}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Offentlig ordre</p>
+              <Badge variant="outline">{translateValue(inspection.hasPublicOrder)}</Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Droplets className="h-5 w-5 text-muted-foreground" />
+              <CardTitle>Avløpsløsning</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2">
+            <div>
+              <p className="text-sm text-muted-foreground">Eksisterende løsning</p>
+              <p className="font-medium">{translateValue(inspection.existingDrainageSolution)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Egen brønn</p>
+              <Badge variant="outline">{translateValue(inspection.hasOwnWell)}</Badge>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Planlagt løsning</p>
+              <p className="font-medium">{translateValue(inspection.plannedSolutionType)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Avstand til nabogrense</p>
+              <p className="font-medium">{inspection.distanceToNeighborBorder || "Ikke spesifisert"}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Nabokonflikt</p>
+              <Badge variant="outline">{translateValue(inspection.hasNeighborConflict)}</Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Thermometer className="h-5 w-5 text-muted-foreground" />
+              <CardTitle>Plassering og frostsikring</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2">
+            <div className="md:col-span-2">
+              <p className="text-sm text-muted-foreground">Planlagt plassering</p>
+              <p className="font-medium">{inspection.plannedPlacement}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Målt klaring</p>
+              <p className="font-medium">{inspection.measuredClearance || "Ikke spesifisert"}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Naturlig frostfritt</p>
+              <Badge variant="outline">{translateValue(inspection.isNaturallyFrostFree)}</Badge>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Frostsikringstiltak</p>
+              <p className="font-medium">{translateValue(inspection.frostProtectionMeasure)}</p>
+            </div>
+            {inspection.frostProtectionOther && (
+              <div>
+                <p className="text-sm text-muted-foreground">Annet tiltak</p>
+                <p className="font-medium">{inspection.frostProtectionOther}</p>
+              </div>
+            )}
+            {inspection.frostProtectionComments && (
+              <div className="md:col-span-2">
+                <p className="text-sm text-muted-foreground">Kommentarer</p>
+                <p className="font-medium">{inspection.frostProtectionComments}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Plug className="h-5 w-5 text-muted-foreground" />
+              <Wrench className="h-5 w-5 text-muted-foreground" />
+              <CardTitle>Tekniske tilkoblinger</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2">
+            <div>
+              <p className="text-sm text-muted-foreground">Trenger elektriker</p>
+              <Badge variant="outline">{translateValue(inspection.needsElectrician)}</Badge>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Strømpunkt i nærheten</p>
+              <Badge variant="outline">{translateValue(inspection.hasNearbyPowerPoint)}</Badge>
+            </div>
+            {inspection.powerPointDistance && (
+              <div>
+                <p className="text-sm text-muted-foreground">Avstand til strømpunkt</p>
+                <p className="font-medium">{inspection.powerPointDistance}</p>
+              </div>
+            )}
+            <div>
+              <p className="text-sm text-muted-foreground">Ny kurs nødvendig</p>
+              <Badge variant="outline">{inspection.needsNewCircuit ? "Ja" : "Nei"}</Badge>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Trenger rørlegger</p>
+              <Badge variant="outline">{translateValue(inspection.needsPlumber)}</Badge>
+            </div>
+            {inspection.existingDrainPipe && (
+              <div>
+                <p className="text-sm text-muted-foreground">Eksisterende avløpsrør</p>
+                <p className="font-medium">{inspection.existingDrainPipe}</p>
+              </div>
+            )}
+            {inspection.outletPoint && (
+              <div>
+                <p className="text-sm text-muted-foreground">Utløpspunkt</p>
+                <p className="font-medium">{inspection.outletPoint}</p>
+              </div>
+            )}
+            {inspection.otherProfessionals && (
+              <div className="md:col-span-2">
+                <p className="text-sm text-muted-foreground">Andre fagfolk</p>
+                <p className="font-medium">{inspection.otherProfessionals}</p>
+              </div>
+            )}
+            {inspection.technicalConnectionComments && (
+              <div className="md:col-span-2">
+                <p className="text-sm text-muted-foreground">Kommentarer</p>
+                <p className="font-medium">{inspection.technicalConnectionComments}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Camera className="h-5 w-5 text-muted-foreground" />
+              <CardTitle>Dokumentasjon</CardTitle>
+              <Badge variant="secondary">{inspection.imageCount} bilder</Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {inspection.imagePaths && inspection.imagePaths.length > 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {inspection.imagePaths.map((path, index) => (
+                  <a
+                    key={index}
+                    href={path}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block aspect-square rounded-md overflow-hidden border hover-elevate"
+                  >
+                    <img
+                      src={path}
+                      alt={`Bilde ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-8">Ingen bilder lastet opp</p>
+            )}
+            {inspection.logisticsComments && (
+              <div className="mt-4 pt-4 border-t">
+                <p className="text-sm text-muted-foreground">Logistikkkommentarer</p>
+                <p className="font-medium">{inspection.logisticsComments}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="text-center text-sm text-muted-foreground">
+          Opprettet: {inspection.createdAt && format(new Date(inspection.createdAt), "d. MMMM yyyy, HH:mm", { locale: nb })}
+        </div>
+      </main>
+    </div>
+  );
+}

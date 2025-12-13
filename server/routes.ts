@@ -3,11 +3,25 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { inspectionFormSchema } from "@shared/schema";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  await setupAuth(app);
+
+  app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
   app.get("/public-objects/:filePath(*)", async (req, res) => {
     const filePath = req.params.filePath;
     const objectStorageService = new ObjectStorageService();
@@ -80,7 +94,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/inspections", async (req, res) => {
+  app.get("/api/inspections", isAuthenticated, async (req, res) => {
     try {
       const inspections = await storage.getAllInspections();
       res.json(inspections);
@@ -90,7 +104,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/inspections/:id", async (req, res) => {
+  app.get("/api/inspections/:id", isAuthenticated, async (req, res) => {
     try {
       const inspection = await storage.getInspection(req.params.id);
       if (!inspection) {
@@ -100,6 +114,19 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching inspection:", error);
       res.status(500).json({ error: "Failed to fetch inspection" });
+    }
+  });
+
+  app.delete("/api/inspections/:id", isAuthenticated, async (req, res) => {
+    try {
+      const deleted = await storage.deleteInspection(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Inspection not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting inspection:", error);
+      res.status(500).json({ error: "Failed to delete inspection" });
     }
   });
 
