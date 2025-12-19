@@ -235,7 +235,7 @@ export default function InspectionForm() {
         </div>
 
         <div className="mb-8 flex flex-col items-center text-center">
-          <img src={logoUrl} alt="Klar til Leie AS" className="h-24 w-auto object-contain mb-4" />
+          <img src={logoUrl} alt="Klar til Leie AS" className="h-48 w-auto object-contain mb-4" />
           <h1 className="text-2xl md:text-3xl font-semibold text-foreground mb-2">
             Befaringsskjema: Lett Avløps-/Gråvannsystem
           </h1>

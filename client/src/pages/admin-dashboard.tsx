@@ -155,7 +155,7 @@ export default function AdminDashboard() {
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <img src={logoUrl} alt="Klar til Leie AS" className="h-10 w-auto object-contain" />
+            <img src={logoUrl} alt="Klar til Leie AS" className="h-16 w-auto object-contain" />
             <h1 className="text-xl font-semibold">Admin Dashboard</h1>
           </div>
           <div className="flex items-center gap-4">
