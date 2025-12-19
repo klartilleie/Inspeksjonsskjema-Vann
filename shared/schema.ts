@@ -25,6 +25,30 @@ export const users = pgTable("users", {
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 
+export const appUsers = pgTable("app_users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  username: varchar("username", { length: 255 }).unique().notNull(),
+  password: varchar("password", { length: 255 }).notNull(),
+  fullName: varchar("full_name", { length: 255 }).notNull(),
+  role: varchar("role", { length: 50 }).notNull().default("user"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type AppUser = typeof appUsers.$inferSelect;
+export type InsertAppUser = typeof appUsers.$inferInsert;
+
+export const loginSchema = z.object({
+  username: z.string().min(1, "Brukernavn er påkrevd"),
+  password: z.string().min(1, "Passord er påkrevd"),
+});
+
+export const registerUserSchema = z.object({
+  username: z.string().min(3, "Brukernavn må være minst 3 tegn"),
+  password: z.string().min(6, "Passord må være minst 6 tegn"),
+  fullName: z.string().min(1, "Fullt navn er påkrevd"),
+  role: z.enum(["user", "admin"]).default("user"),
+});
+
 export const inspections = pgTable("inspections", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   customerName: text("customer_name").notNull(),

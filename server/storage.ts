@@ -5,8 +5,11 @@ import {
   type UpsertUser, 
   type InspectionFormData,
   type Inspection,
+  type AppUser,
+  type InsertAppUser,
   users,
-  inspections
+  inspections,
+  appUsers
 } from "@shared/schema";
 
 export interface IStorage {
@@ -16,6 +19,11 @@ export interface IStorage {
   getInspection(id: string): Promise<Inspection | undefined>;
   getAllInspections(): Promise<Inspection[]>;
   deleteInspection(id: string): Promise<boolean>;
+  getAppUserByUsername(username: string): Promise<AppUser | undefined>;
+  getAppUserById(id: string): Promise<AppUser | undefined>;
+  createAppUser(user: InsertAppUser): Promise<AppUser>;
+  getAllAppUsers(): Promise<AppUser[]>;
+  deleteAppUser(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -87,6 +95,30 @@ export class DatabaseStorage implements IStorage {
 
   async deleteInspection(id: string): Promise<boolean> {
     const result = await db.delete(inspections).where(eq(inspections.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getAppUserByUsername(username: string): Promise<AppUser | undefined> {
+    const [user] = await db.select().from(appUsers).where(eq(appUsers.username, username));
+    return user;
+  }
+
+  async getAppUserById(id: string): Promise<AppUser | undefined> {
+    const [user] = await db.select().from(appUsers).where(eq(appUsers.id, id));
+    return user;
+  }
+
+  async createAppUser(userData: InsertAppUser): Promise<AppUser> {
+    const [user] = await db.insert(appUsers).values(userData).returning();
+    return user;
+  }
+
+  async getAllAppUsers(): Promise<AppUser[]> {
+    return db.select().from(appUsers).orderBy(desc(appUsers.createdAt));
+  }
+
+  async deleteAppUser(id: string): Promise<boolean> {
+    const result = await db.delete(appUsers).where(eq(appUsers.id, id)).returning();
     return result.length > 0;
   }
 }

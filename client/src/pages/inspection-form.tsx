@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
@@ -17,15 +17,9 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/lib/auth";
 import { clientInspectionFormSchema, type ClientInspectionFormData } from "@shared/schema";
 import {
   User,
@@ -42,109 +36,15 @@ import {
   Upload,
   X,
   Loader2,
-  Users,
-  Save,
-  Trash2,
+  LogOut,
 } from "lucide-react";
 import logoUrl from "@assets/Lars_Logo-01_1765460766343.jpg";
 
-interface CustomerTemplate {
-  id: string;
-  name: string;
-  address: string;
-  email: string;
-  phone: string;
-}
-
-const TEMPLATES_KEY = "befaringsskjema_customer_templates";
-
 export default function InspectionForm() {
   const { toast } = useToast();
+  const { user, logout } = useAuth();
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [customerTemplates, setCustomerTemplates] = useState<CustomerTemplate[]>([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
-
-  useEffect(() => {
-    const stored = localStorage.getItem(TEMPLATES_KEY);
-    if (stored) {
-      try {
-        setCustomerTemplates(JSON.parse(stored));
-      } catch {
-        setCustomerTemplates([]);
-      }
-    }
-  }, []);
-
-  const saveTemplate = () => {
-    const name = form.getValues("customerName");
-    const address = form.getValues("customerAddress");
-    const email = form.getValues("customerEmail");
-    const phone = form.getValues("customerPhone");
-
-    if (!name || !email) {
-      toast({
-        title: "Manglende informasjon",
-        description: "Kundenavn og e-post er påkrevd for å lagre mal.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const existingIndex = customerTemplates.findIndex(t => t.email === email);
-    let updatedTemplates: CustomerTemplate[];
-    
-    if (existingIndex >= 0) {
-      updatedTemplates = [...customerTemplates];
-      updatedTemplates[existingIndex] = { ...updatedTemplates[existingIndex], name, address, email, phone };
-    } else {
-      const newTemplate: CustomerTemplate = {
-        id: Date.now().toString(),
-        name,
-        address,
-        email,
-        phone,
-      };
-      updatedTemplates = [...customerTemplates, newTemplate];
-    }
-
-    setCustomerTemplates(updatedTemplates);
-    localStorage.setItem(TEMPLATES_KEY, JSON.stringify(updatedTemplates));
-    
-    toast({
-      title: "Mal lagret",
-      description: `Kundeinformasjon for ${name} er lagret.`,
-    });
-  };
-
-  const loadTemplate = (templateId: string) => {
-    const template = customerTemplates.find(t => t.id === templateId);
-    if (template) {
-      form.setValue("customerName", template.name);
-      form.setValue("customerAddress", template.address);
-      form.setValue("customerEmail", template.email);
-      form.setValue("customerPhone", template.phone);
-      setSelectedTemplateId(templateId);
-      
-      toast({
-        title: "Mal lastet",
-        description: `Kundeinformasjon for ${template.name} er fylt inn.`,
-      });
-    }
-  };
-
-  const deleteTemplate = (templateId: string) => {
-    const template = customerTemplates.find(t => t.id === templateId);
-    const updatedTemplates = customerTemplates.filter(t => t.id !== templateId);
-    setCustomerTemplates(updatedTemplates);
-    localStorage.setItem(TEMPLATES_KEY, JSON.stringify(updatedTemplates));
-    setSelectedTemplateId("");
-    
-    toast({
-      title: "Mal slettet",
-      description: template ? `Kundeinformasjon for ${template.name} er slettet.` : "Mal slettet.",
-    });
-  };
 
   const form = useForm<ClientInspectionFormData>({
     resolver: zodResolver(clientInspectionFormSchema),
@@ -154,7 +54,7 @@ export default function InspectionForm() {
       customerEmail: "",
       customerPhone: "",
       inspectionDateTime: "",
-      reportFilledBy: "",
+      reportFilledBy: user?.fullName || "",
       hasPublicOrder: "nei",
       existingDrainageSolution: "ikke_aktuelt",
       hasOwnWell: "nei",
@@ -194,9 +94,38 @@ export default function InspectionForm() {
         title: "Skjema sendt",
         description: "Befaringsskjemaet ble lagret.",
       });
-      form.reset();
+      form.reset({
+        customerName: "",
+        customerAddress: "",
+        customerEmail: "",
+        customerPhone: "",
+        inspectionDateTime: "",
+        reportFilledBy: user?.fullName || "",
+        hasPublicOrder: "nei",
+        existingDrainageSolution: "ikke_aktuelt",
+        hasOwnWell: "nei",
+        plannedSolutionType: "ikke_aktuelt",
+        distanceToNeighborBorder: "",
+        hasNeighborConflict: "nei",
+        plannedPlacement: "",
+        measuredClearance: "",
+        isNaturallyFrostFree: "nei",
+        frostProtectionMeasure: "ingen",
+        frostProtectionOther: "",
+        frostProtectionComments: "",
+        needsElectrician: "nei",
+        hasNearbyPowerPoint: "nei",
+        powerPointDistance: "",
+        needsNewCircuit: false,
+        needsPlumber: "nei",
+        existingDrainPipe: "",
+        outletPoint: "",
+        otherProfessionals: "",
+        technicalConnectionComments: "",
+        imagePaths: [],
+        logisticsComments: "",
+      });
       setUploadedImages([]);
-      setSelectedTemplateId("");
     },
     onError: () => {
       toast({
@@ -268,9 +197,29 @@ export default function InspectionForm() {
   const frostProtectionMeasure = form.watch("frostProtectionMeasure");
   const hasNearbyPowerPoint = form.watch("hasNearbyPowerPoint");
 
+  const handleLogout = async () => {
+    await logout();
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto px-4 md:px-8 py-8">
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <User className="w-4 h-4" />
+            <span data-testid="text-logged-in-user">{user?.fullName}</span>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleLogout}
+            data-testid="button-logout"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Logg ut
+          </Button>
+        </div>
+
         <div className="mb-8 flex flex-col items-center text-center">
           <img src={logoUrl} alt="Klar til Leie AS" className="h-24 w-auto object-contain mb-4" />
           <h1 className="text-2xl md:text-3xl font-semibold text-foreground mb-2">
@@ -291,40 +240,6 @@ export default function InspectionForm() {
                   </div>
                   <CardTitle className="text-lg">Kunde- og Prosjektdetaljer</CardTitle>
                 </div>
-                
-                {customerTemplates.length > 0 && (
-                  <div className="mt-4 p-4 bg-muted/50 rounded-lg space-y-3">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Users className="w-4 h-4" />
-                      <span>Lagrede kundemaler</span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Select value={selectedTemplateId} onValueChange={loadTemplate}>
-                        <SelectTrigger className="w-full md:w-64" data-testid="select-customer-template">
-                          <SelectValue placeholder="Velg en eksisterende kunde..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {customerTemplates.map((template) => (
-                            <SelectItem key={template.id} value={template.id}>
-                              {template.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {selectedTemplateId && (
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          onClick={() => deleteTemplate(selectedTemplateId)}
-                          data-testid="button-delete-template"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                )}
               </CardHeader>
               <CardContent className="space-y-6">
                 <FormField

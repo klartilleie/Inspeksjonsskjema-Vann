@@ -4,6 +4,20 @@
 
 This is a digital inspection form application for Norwegian wastewater and greywater systems ("Befaringsskjema: Lett Avløps-/Gråvannsystem"). The application allows inspectors to collect and submit inspection data including customer details, drainage solutions, technical specifications, and photo documentation. It's built as a full-stack TypeScript application with a React frontend and Express backend.
 
+## Authentication System
+
+The application uses a custom session-based authentication system (separate from Replit Auth):
+- **First-time setup**: When no users exist, the login page shows a setup form to create the first admin
+- **User roles**: "user" (can submit forms) and "admin" (can manage users and view all submissions)
+- **Session-based**: Uses express-session with PostgreSQL session store
+- **Password hashing**: SHA-256 hashing (stored as hex)
+- **Protected routes**: All routes require authentication; admin dashboard requires admin role
+- **Auto-fill**: "Hvem fylte ut rapporten" field is auto-populated with logged-in user's name
+
+### Setup Endpoints
+- `GET /api/app/setup-status` - Check if setup is needed (returns { needsSetup: boolean })
+- `POST /api/app/setup` - Create first admin user (only works when no users exist)
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.

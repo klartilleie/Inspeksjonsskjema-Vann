@@ -1,16 +1,190 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
-import { inspectionFormSchema } from "@shared/schema";
+import { inspectionFormSchema, loginSchema, registerUserSchema } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { generateInspectionPDF } from "./pdfGenerator";
+import crypto from "crypto";
+
+function hashPassword(password: string): string {
+  return crypto.createHash("sha256").update(password).digest("hex");
+}
+
+function isAppAuthenticated(req: Request, res: Response, next: NextFunction) {
+  if (req.session && (req.session as any).appUserId) {
+    next();
+  } else {
+    res.status(401).json({ error: "Ikke logget inn" });
+  }
+}
+
+function isAppAdmin(req: Request, res: Response, next: NextFunction) {
+  if (req.session && (req.session as any).appUserRole === "admin") {
+    next();
+  } else {
+    res.status(403).json({ error: "Ingen tilgang" });
+  }
+}
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
   await setupAuth(app);
+
+  // App user login
+  app.post("/api/app/login", async (req, res) => {
+    try {
+      const { username, password } = loginSchema.parse(req.body);
+      const user = await storage.getAppUserByUsername(username);
+      
+      if (!user || user.password !== hashPassword(password)) {
+        return res.status(401).json({ error: "Ugyldig brukernavn eller passord" });
+      }
+      
+      (req.session as any).appUserId = user.id;
+      (req.session as any).appUserRole = user.role;
+      (req.session as any).appUserFullName = user.fullName;
+      
+      res.json({ 
+        id: user.id, 
+        username: user.username, 
+        fullName: user.fullName, 
+        role: user.role 
+      });
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(400).json({ error: "Ugyldig innlogging" });
+    }
+  });
+
+  app.post("/api/app/logout", (req, res) => {
+    (req.session as any).appUserId = null;
+    (req.session as any).appUserRole = null;
+    (req.session as any).appUserFullName = null;
+    res.json({ success: true });
+  });
+
+  app.get("/api/app/me", isAppAuthenticated, async (req, res) => {
+    try {
+      const user = await storage.getAppUserById((req.session as any).appUserId);
+      if (!user) {
+        return res.status(404).json({ error: "Bruker ikke funnet" });
+      }
+      res.json({ 
+        id: user.id, 
+        username: user.username, 
+        fullName: user.fullName, 
+        role: user.role 
+      });
+    } catch (error) {
+      console.error("Error fetching app user:", error);
+      res.status(500).json({ error: "Kunne ikke hente bruker" });
+    }
+  });
+
+  // Admin: Manage app users
+  app.get("/api/app/users", isAppAuthenticated, isAppAdmin, async (req, res) => {
+    try {
+      const users = await storage.getAllAppUsers();
+      res.json(users.map(u => ({ 
+        id: u.id, 
+        username: u.username, 
+        fullName: u.fullName, 
+        role: u.role,
+        createdAt: u.createdAt
+      })));
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ error: "Kunne ikke hente brukere" });
+    }
+  });
+
+  app.post("/api/app/users", isAppAuthenticated, isAppAdmin, async (req, res) => {
+    try {
+      const data = registerUserSchema.parse(req.body);
+      
+      const existing = await storage.getAppUserByUsername(data.username);
+      if (existing) {
+        return res.status(400).json({ error: "Brukernavn er allerede i bruk" });
+      }
+      
+      const user = await storage.createAppUser({
+        username: data.username,
+        password: hashPassword(data.password),
+        fullName: data.fullName,
+        role: data.role,
+      });
+      
+      res.status(201).json({ 
+        id: user.id, 
+        username: user.username, 
+        fullName: user.fullName, 
+        role: user.role 
+      });
+    } catch (error) {
+      console.error("Error creating user:", error);
+      res.status(400).json({ error: "Kunne ikke opprette bruker" });
+    }
+  });
+
+  app.delete("/api/app/users/:id", isAppAuthenticated, isAppAdmin, async (req, res) => {
+    try {
+      const deleted = await storage.deleteAppUser(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Bruker ikke funnet" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ error: "Kunne ikke slette bruker" });
+    }
+  });
+
+  // Setup endpoint - creates first admin if no users exist
+  app.post("/api/app/setup", async (req, res) => {
+    try {
+      const users = await storage.getAllAppUsers();
+      if (users.length > 0) {
+        return res.status(400).json({ error: "Oppsett allerede fullført. Brukere finnes allerede." });
+      }
+      
+      const data = registerUserSchema.parse({ ...req.body, role: "admin" });
+      
+      const user = await storage.createAppUser({
+        username: data.username,
+        password: hashPassword(data.password),
+        fullName: data.fullName,
+        role: "admin",
+      });
+      
+      (req.session as any).appUserId = user.id;
+      (req.session as any).appUserRole = user.role;
+      (req.session as any).appUserFullName = user.fullName;
+      
+      res.status(201).json({ 
+        id: user.id, 
+        username: user.username, 
+        fullName: user.fullName, 
+        role: user.role 
+      });
+    } catch (error) {
+      console.error("Error in setup:", error);
+      res.status(400).json({ error: "Kunne ikke opprette admin-bruker" });
+    }
+  });
+
+  // Check if setup is needed
+  app.get("/api/app/setup-status", async (req, res) => {
+    try {
+      const users = await storage.getAllAppUsers();
+      res.json({ needsSetup: users.length === 0 });
+    } catch (error) {
+      console.error("Error checking setup status:", error);
+      res.status(500).json({ error: "Kunne ikke sjekke status" });
+    }
+  });
 
   app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
     try {
