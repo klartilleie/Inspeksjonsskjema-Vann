@@ -413,19 +413,6 @@ export default function InspectionForm() {
                   )}
                 />
 
-                <div className="flex justify-end">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={saveTemplate}
-                    data-testid="button-save-template"
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    Lagre kundeinformasjon som mal
-                  </Button>
-                </div>
-
                 <FormField
                   control={form.control}
                   name="inspectionDateTime"
