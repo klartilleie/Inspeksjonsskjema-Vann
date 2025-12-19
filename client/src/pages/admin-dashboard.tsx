@@ -37,7 +37,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Inspection } from "@shared/schema";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
-import { Trash2, Eye, LogOut, FileText, Image, Users, UserPlus, User, Lock, Loader2 } from "lucide-react";
+import { Trash2, Eye, LogOut, FileText, Image, Users, UserPlus, User, Lock, Loader2, Download, Home } from "lucide-react";
 import logoUrl from "@assets/Lars_Logo-01_1765460766343.jpg";
 
 interface AppUser {
@@ -165,6 +165,15 @@ export default function AdminDashboard() {
             <Button 
               variant="outline" 
               size="sm"
+              onClick={() => window.location.href = "/"}
+              data-testid="button-back-to-form"
+            >
+              <Home className="h-4 w-4 mr-2" />
+              Til skjema
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
               onClick={handleLogout}
               data-testid="button-admin-logout"
             >
@@ -241,7 +250,17 @@ export default function AdminDashboard() {
                           data-testid={`button-view-${inspection.id}`}
                         >
                           <Eye className="h-4 w-4 mr-2" />
-                          Se detaljer
+                          Se
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => window.open(`/api/inspections/${inspection.id}/pdf`, "_blank")}
+                          data-testid={`button-pdf-${inspection.id}`}
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          PDF
                         </Button>
                         <Button
                           variant="outline"

@@ -37,6 +37,7 @@ import {
   X,
   Loader2,
   LogOut,
+  Settings,
 } from "lucide-react";
 import logoUrl from "@assets/Lars_Logo-01_1765460766343.jpg";
 
@@ -209,15 +210,28 @@ export default function InspectionForm() {
             <User className="w-4 h-4" />
             <span data-testid="text-logged-in-user">{user?.fullName}</span>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleLogout}
-            data-testid="button-logout"
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            Logg ut
-          </Button>
+          <div className="flex items-center gap-2">
+            {user?.role === "admin" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.location.href = "/admin"}
+                data-testid="button-admin-panel"
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                Admin
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleLogout}
+              data-testid="button-logout"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Logg ut
+            </Button>
+          </div>
         </div>
 
         <div className="mb-8 flex flex-col items-center text-center">
