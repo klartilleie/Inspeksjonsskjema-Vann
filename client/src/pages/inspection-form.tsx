@@ -601,7 +601,8 @@ export default function InspectionForm() {
     try {
       for (const file of Array.from(files)) {
         const uploadUrlRes = await apiRequest("POST", "/api/objects/upload", {});
-        const { uploadURL } = uploadUrlRes as { uploadURL: string };
+        const uploadData = await uploadUrlRes.json();
+        const { uploadURL } = uploadData as { uploadURL: string };
 
         await fetch(uploadURL, {
           method: "PUT",
@@ -614,7 +615,8 @@ export default function InspectionForm() {
         const updateRes = await apiRequest("PUT", "/api/uploaded-images", {
           imageURL: uploadURL,
         });
-        const { objectPath } = updateRes as { objectPath: string };
+        const updateData = await updateRes.json();
+        const { objectPath } = updateData as { objectPath: string };
 
         setUploadedImages((prev) => [...prev, objectPath]);
       }
