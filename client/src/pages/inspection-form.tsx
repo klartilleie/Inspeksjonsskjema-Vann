@@ -23,7 +23,14 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
-import { clientInspectionFormSchema, type ClientInspectionFormData } from "@shared/schema";
+import { clientInspectionFormSchema, type ClientInspectionFormData, BIOCLEANER_MODELS, STYRESKAP_OPTIONS, DEFAULT_PRICES } from "@shared/schema";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   User,
   MapPin,
@@ -43,6 +50,7 @@ import {
   Settings,
   CircleDot,
   Trash2,
+  Calculator,
 } from "lucide-react";
 import logoUrl from "@assets/Lars_Logo-01_1765460766343.jpg";
 import "leaflet/dist/leaflet.css";
@@ -169,8 +177,54 @@ export default function InspectionForm() {
       logisticsComments: "",
       mapMarkers: [],
       mapNotes: "",
+      biocleanerModel: "",
+      biocleanerPrice: 0,
+      numberOfHomes: "1",
+      styreskapSize: "small",
+      styreskapPrice: STYRESKAP_OPTIONS[0].defaultPrice,
+      soknadUtslippPrice: DEFAULT_PRICES.soknadUtslipp,
+      soknadDispensasjonPrice: DEFAULT_PRICES.soknadDispensasjon,
+      innreguleringPrice: DEFAULT_PRICES.innregulering,
+      gravingPrice: DEFAULT_PRICES.graving,
+      fraktPrice: DEFAULT_PRICES.frakt,
+      offerSum: 0,
+      offerMva: 0,
+      offerTotal: 0,
+      offerComments: "",
     },
   });
+
+  const watchBiocleanerModel = form.watch("biocleanerModel");
+  const watchBiocleanerPrice = form.watch("biocleanerPrice");
+  const watchStyreskapPrice = form.watch("styreskapPrice");
+  const watchSoknadUtslippPrice = form.watch("soknadUtslippPrice");
+  const watchSoknadDispensasjonPrice = form.watch("soknadDispensasjonPrice");
+  const watchInnreguleringPrice = form.watch("innreguleringPrice");
+  const watchGravingPrice = form.watch("gravingPrice");
+  const watchFraktPrice = form.watch("fraktPrice");
+
+  const calculateOfferTotals = () => {
+    const sum = (watchBiocleanerPrice || 0) + 
+                (watchStyreskapPrice || 0) + 
+                (watchSoknadUtslippPrice || 0) + 
+                (watchSoknadDispensasjonPrice || 0) + 
+                (watchInnreguleringPrice || 0) + 
+                (watchGravingPrice || 0) + 
+                (watchFraktPrice || 0);
+    const mva = Math.round(sum * 0.25);
+    const total = sum + mva;
+    return { sum, mva, total };
+  };
+
+  const offerTotals = calculateOfferTotals();
+
+  const handleBiocleanerModelChange = (modelId: string) => {
+    form.setValue("biocleanerModel", modelId);
+    const model = BIOCLEANER_MODELS.find(m => m.id === modelId);
+    if (model) {
+      form.setValue("biocleanerPrice", model.defaultPrice);
+    }
+  };
 
   const submitMutation = useMutation({
     mutationFn: async (data: ClientInspectionFormData) => {
@@ -285,11 +339,15 @@ export default function InspectionForm() {
       });
       return;
     }
-    const formDataWithMarkers = {
+    const totals = calculateOfferTotals();
+    const formDataWithExtras = {
       ...data,
       mapMarkers: markers,
+      offerSum: totals.sum,
+      offerMva: totals.mva,
+      offerTotal: totals.total,
     };
-    submitMutation.mutate(formDataWithMarkers);
+    submitMutation.mutate(formDataWithExtras);
   };
 
   const frostProtectionMeasure = form.watch("frostProtectionMeasure");
@@ -1262,6 +1320,256 @@ export default function InspectionForm() {
                           placeholder="Beskriv plasseringen, avstander, terrenget..."
                           className="min-h-24"
                           data-testid="input-map-notes"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="bg-primary/5 rounded-t-lg">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Calculator className="w-5 h-5" />
+                  Tilbud på Biocleaner renseanlegg
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6 space-y-6">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Biocleaner-modell</Label>
+                    <Select
+                      value={watchBiocleanerModel || ""}
+                      onValueChange={handleBiocleanerModelChange}
+                      data-testid="select-biocleaner-model"
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Velg modell" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {BIOCLEANER_MODELS.map((model) => (
+                          <SelectItem key={model.id} value={model.id}>
+                            {model.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="numberOfHomes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Antall boliger/hytter</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="f.eks. 1 enebolig, 2 boliger" 
+                            data-testid="input-number-of-homes"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
+                  <h4 className="font-medium text-sm text-muted-foreground">Prisdetaljer</h4>
+                  
+                  <div className="grid gap-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Biocleaner renseanlegg</span>
+                      <FormField
+                        control={form.control}
+                        name="biocleanerPrice"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center gap-2 mb-0">
+                            <FormControl>
+                              <Input 
+                                type="number"
+                                className="w-28 text-right"
+                                data-testid="input-biocleaner-price"
+                                {...field}
+                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                              />
+                            </FormControl>
+                            <span className="text-sm text-muted-foreground">kr</span>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Styreskap ({STYRESKAP_OPTIONS[0].name})</span>
+                      <FormField
+                        control={form.control}
+                        name="styreskapPrice"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center gap-2 mb-0">
+                            <FormControl>
+                              <Input 
+                                type="number"
+                                className="w-28 text-right"
+                                data-testid="input-styreskap-price"
+                                {...field}
+                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                              />
+                            </FormControl>
+                            <span className="text-sm text-muted-foreground">kr</span>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Søknad om utslipp</span>
+                      <FormField
+                        control={form.control}
+                        name="soknadUtslippPrice"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center gap-2 mb-0">
+                            <FormControl>
+                              <Input 
+                                type="number"
+                                className="w-28 text-right"
+                                data-testid="input-soknad-utslipp-price"
+                                {...field}
+                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                              />
+                            </FormControl>
+                            <span className="text-sm text-muted-foreground">kr</span>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Søknad om dispensasjon</span>
+                      <FormField
+                        control={form.control}
+                        name="soknadDispensasjonPrice"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center gap-2 mb-0">
+                            <FormControl>
+                              <Input 
+                                type="number"
+                                className="w-28 text-right"
+                                data-testid="input-soknad-dispensasjon-price"
+                                {...field}
+                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                              />
+                            </FormControl>
+                            <span className="text-sm text-muted-foreground">kr</span>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Innregulering/oppstart/montering</span>
+                      <FormField
+                        control={form.control}
+                        name="innreguleringPrice"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center gap-2 mb-0">
+                            <FormControl>
+                              <Input 
+                                type="number"
+                                className="w-28 text-right"
+                                data-testid="input-innregulering-price"
+                                {...field}
+                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                              />
+                            </FormControl>
+                            <span className="text-sm text-muted-foreground">kr</span>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Graving med singel</span>
+                      <FormField
+                        control={form.control}
+                        name="gravingPrice"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center gap-2 mb-0">
+                            <FormControl>
+                              <Input 
+                                type="number"
+                                className="w-28 text-right"
+                                data-testid="input-graving-price"
+                                {...field}
+                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                              />
+                            </FormControl>
+                            <span className="text-sm text-muted-foreground">kr</span>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Frakt</span>
+                      <FormField
+                        control={form.control}
+                        name="fraktPrice"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center gap-2 mb-0">
+                            <FormControl>
+                              <Input 
+                                type="number"
+                                className="w-28 text-right"
+                                data-testid="input-frakt-price"
+                                {...field}
+                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                              />
+                            </FormControl>
+                            <span className="text-sm text-muted-foreground">kr</span>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="border-t pt-3 mt-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Sum</span>
+                        <span className="text-sm font-medium" data-testid="text-offer-sum">
+                          kr {offerTotals.sum.toLocaleString("nb-NO")},-
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Mva (25%)</span>
+                        <span className="text-sm" data-testid="text-offer-mva">
+                          kr {offerTotals.mva.toLocaleString("nb-NO")},-
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between border-t pt-2">
+                        <span className="font-semibold">Total</span>
+                        <span className="font-semibold text-lg" data-testid="text-offer-total">
+                          kr {offerTotals.total.toLocaleString("nb-NO")},-
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="offerComments"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Kommentarer til tilbudet</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Eventuelle tilleggsopplysninger eller kommentarer..."
+                          className="min-h-24"
+                          data-testid="input-offer-comments"
                           {...field}
                         />
                       </FormControl>

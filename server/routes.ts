@@ -25,6 +25,9 @@ async function sendInspectionEmail(inspection: Inspection): Promise<boolean> {
       return `- ${label}: ${m.position[0].toFixed(6)}, ${m.position[1].toFixed(6)}`;
     }).join("\n");
     
+    const formatPrice = (price: number | null | undefined) => 
+      price ? `kr ${price.toLocaleString("nb-NO")},-` : "kr 0,-";
+    
     const emailContent = `
 Nytt befaringsskjema mottatt!
 
@@ -60,6 +63,22 @@ BILDER:
 - Antall bilder: ${inspection.imageCount}
 
 ${inspection.logisticsComments ? `LOGISTIKK:\n${inspection.logisticsComments}` : ""}
+
+TILBUD PÅ BIOCLEANER RENSEANLEGG:
+${inspection.biocleanerModel ? `- Biocleaner-modell: ${inspection.biocleanerModel}` : ""}
+${inspection.numberOfHomes ? `- Antall boliger/hytter: ${inspection.numberOfHomes}` : ""}
+- Biocleaner renseanlegg: ${formatPrice(inspection.biocleanerPrice)}
+- Styreskap: ${formatPrice(inspection.styreskapPrice)}
+- Søknad om utslipp: ${formatPrice(inspection.soknadUtslippPrice)}
+- Søknad om dispensasjon: ${formatPrice(inspection.soknadDispensasjonPrice)}
+- Innregulering/oppstart/montering: ${formatPrice(inspection.innreguleringPrice)}
+- Graving med singel: ${formatPrice(inspection.gravingPrice)}
+- Frakt: ${formatPrice(inspection.fraktPrice)}
+----------------------------------------
+- Sum: ${formatPrice(inspection.offerSum)}
+- Mva (25%): ${formatPrice(inspection.offerMva)}
+- TOTAL: ${formatPrice(inspection.offerTotal)}
+${inspection.offerComments ? `\nKommentarer til tilbudet:\n${inspection.offerComments}` : ""}
 
 ---
 Dette er en automatisk generert e-post fra befaringsskjema-systemet.
