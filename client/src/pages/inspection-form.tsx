@@ -590,7 +590,7 @@ export default function InspectionForm() {
   
   const content = (
     <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto px-4 md:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <User className="w-4 h-4" />
@@ -1586,7 +1586,7 @@ export default function InspectionForm() {
                   </div>
                 )}
                 
-                <div className="h-[400px] rounded-lg overflow-hidden border">
+                <div className="h-[600px] rounded-lg overflow-hidden border">
                   <MapContainer
                     center={mapCenter}
                     zoom={18}
