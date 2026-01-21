@@ -206,14 +206,14 @@ export default function InspectionForm() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto px-4 md:px-8 py-8">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <User className="w-4 h-4" />
             <span data-testid="text-logged-in-user">{user?.fullName}</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
-              variant="outline"
+              variant="default"
               size="sm"
               onClick={() => {
                 const name = form.getValues("customerName");
