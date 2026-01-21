@@ -1,8 +1,9 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from "react-leaflet";
+import { LoadScript, Autocomplete } from "@react-google-maps/api";
 import L from "leaflet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -99,6 +100,16 @@ function MapClickHandler({
   return null;
 }
 
+const GOOGLE_MAPS_LIBRARIES: ("places")[] = ["places"];
+
+function MapUpdater({ center }: { center: [number, number] }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(center, 16);
+  }, [center, map]);
+  return null;
+}
+
 export default function InspectionForm() {
   const { toast } = useToast();
   const { user, logout } = useAuth();
@@ -106,6 +117,8 @@ export default function InspectionForm() {
   const [isUploading, setIsUploading] = useState(false);
   const [markers, setMarkers] = useState<MarkerData[]>([]);
   const [activeMarkerType, setActiveMarkerType] = useState<string | null>(null);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([59.9139, 10.7522]);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
   const handleAddMarker = (lat: number, lng: number) => {
     if (!activeMarkerType) return;
@@ -226,6 +239,24 @@ export default function InspectionForm() {
       form.setValue("biocleanerPrice", model.defaultPrice);
     }
   };
+
+  const handlePlaceSelect = useCallback(() => {
+    if (autocompleteRef.current) {
+      const place = autocompleteRef.current.getPlace();
+      if (place.geometry?.location) {
+        const lat = place.geometry.location.lat();
+        const lng = place.geometry.location.lng();
+        setMapCenter([lat, lng]);
+        toast({
+          title: "Adresse funnet",
+          description: "Kartet er oppdatert til valgt adresse.",
+        });
+      }
+      if (place.formatted_address) {
+        form.setValue("customerAddress", place.formatted_address);
+      }
+    }
+  }, [toast, form]);
 
   const submitMutation = useMutation({
     mutationFn: async (data: ClientInspectionFormData) => {
@@ -358,7 +389,9 @@ export default function InspectionForm() {
     await logout();
   };
 
-  return (
+  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+
+  const content = (
     <div className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto px-4 md:px-8 py-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -443,12 +476,36 @@ export default function InspectionForm() {
                         Kunde Adresse og Postnummer *
                       </FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="Adresse, postnummer og sted"
-                          data-testid="input-customer-address"
-                          {...field}
-                        />
+                        {googleMapsApiKey ? (
+                          <Autocomplete
+                            onLoad={(autocomplete) => {
+                              autocompleteRef.current = autocomplete;
+                            }}
+                            onPlaceChanged={handlePlaceSelect}
+                            options={{
+                              componentRestrictions: { country: "no" },
+                              types: ["address"],
+                            }}
+                          >
+                            <Input
+                              placeholder="Søk etter adresse..."
+                              data-testid="input-customer-address"
+                              {...field}
+                            />
+                          </Autocomplete>
+                        ) : (
+                          <Input
+                            placeholder="Adresse, postnummer og sted"
+                            data-testid="input-customer-address"
+                            {...field}
+                          />
+                        )}
                       </FormControl>
+                      {googleMapsApiKey && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Begynn å skrive adressen og velg fra listen for å vise på kartet
+                        </p>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
@@ -1241,7 +1298,7 @@ export default function InspectionForm() {
                 
                 <div className="h-[400px] rounded-lg overflow-hidden border">
                   <MapContainer
-                    center={[59.9139, 10.7522]}
+                    center={mapCenter}
                     zoom={13}
                     style={{ height: "100%", width: "100%" }}
                   >
@@ -1249,6 +1306,7 @@ export default function InspectionForm() {
                       attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     />
+                    <MapUpdater center={mapCenter} />
                     <MapClickHandler
                       activeMarkerType={activeMarkerType}
                       onAddMarker={handleAddMarker}
@@ -1636,4 +1694,19 @@ export default function InspectionForm() {
       </div>
     </div>
   );
+
+  if (googleMapsApiKey) {
+    return (
+      <LoadScript
+        googleMapsApiKey={googleMapsApiKey}
+        libraries={GOOGLE_MAPS_LIBRARIES}
+        loadingElement={<div className="flex justify-center items-center h-screen"><p>Laster Google Maps...</p></div>}
+      >
+        {content}
+      </LoadScript>
+    );
+  }
+
+  return content;
 }
+
