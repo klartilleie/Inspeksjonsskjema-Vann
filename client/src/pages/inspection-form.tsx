@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
-import { MapContainer, TileLayer, WMSTileLayer, Marker, Popup, useMapEvents, useMap, ScaleControl } from "react-leaflet";
+import { MapContainer, TileLayer, WMSTileLayer, Marker, Popup, useMapEvents, useMap, ScaleControl, Polyline, Tooltip } from "react-leaflet";
 import L from "leaflet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -84,16 +84,50 @@ interface MarkerData {
   position: [number, number];
 }
 
+interface PipeLineData {
+  id: string;
+  points: [number, number][];
+  label: string;
+  color: string;
+}
+
+function calculateDistance(point1: [number, number], point2: [number, number]): number {
+  const R = 6371000;
+  const lat1 = point1[0] * Math.PI / 180;
+  const lat2 = point2[0] * Math.PI / 180;
+  const deltaLat = (point2[0] - point1[0]) * Math.PI / 180;
+  const deltaLon = (point2[1] - point1[1]) * Math.PI / 180;
+  const a = Math.sin(deltaLat/2) * Math.sin(deltaLat/2) +
+            Math.cos(lat1) * Math.cos(lat2) *
+            Math.sin(deltaLon/2) * Math.sin(deltaLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+function getTotalPipeLength(points: [number, number][]): number {
+  let total = 0;
+  for (let i = 0; i < points.length - 1; i++) {
+    total += calculateDistance(points[i], points[i + 1]);
+  }
+  return total;
+}
+
 function MapClickHandler({
   activeMarkerType,
   onAddMarker,
+  isDrawingPipe,
+  onAddPipePoint,
 }: {
   activeMarkerType: string | null;
   onAddMarker: (lat: number, lng: number) => void;
+  isDrawingPipe: boolean;
+  onAddPipePoint: (lat: number, lng: number) => void;
 }) {
   useMapEvents({
     click: (e) => {
-      if (activeMarkerType) {
+      if (isDrawingPipe) {
+        onAddPipePoint(e.latlng.lat, e.latlng.lng);
+      } else if (activeMarkerType) {
         onAddMarker(e.latlng.lat, e.latlng.lng);
       }
     },
@@ -206,6 +240,11 @@ export default function InspectionForm() {
   const [addressSuggestions, setAddressSuggestions] = useState<KartverketAddress[]>([]);
   const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
   const [isSearchingAddress, setIsSearchingAddress] = useState(false);
+  const [pipeLines, setPipeLines] = useState<PipeLineData[]>([]);
+  const [isDrawingPipe, setIsDrawingPipe] = useState(false);
+  const [currentPipePoints, setCurrentPipePoints] = useState<[number, number][]>([]);
+  const [currentPipeLabel, setCurrentPipeLabel] = useState("");
+  const [currentPipeColor, setCurrentPipeColor] = useState("#8B4513");
   const addressInputRef = useRef<HTMLInputElement>(null);
   const mapRef = useRef<L.Map | null>(null);
 
@@ -256,6 +295,45 @@ export default function InspectionForm() {
 
   const removeMarker = (id: string) => {
     setMarkers((prev) => prev.filter((m) => m.id !== id));
+  };
+
+  const handleAddPipePoint = useCallback((lat: number, lng: number) => {
+    setCurrentPipePoints(prev => [...prev, [lat, lng]]);
+  }, []);
+
+  const startDrawingPipe = (label: string, color: string) => {
+    setActiveMarkerType(null);
+    setIsDrawingPipe(true);
+    setCurrentPipeLabel(label);
+    setCurrentPipeColor(color);
+    setCurrentPipePoints([]);
+    toast({
+      title: "Tegnemodus aktivert",
+      description: `Klikk på kartet for å tegne ${label}. Dobbeltklikk for å avslutte.`,
+    });
+  };
+
+  const finishDrawingPipe = useCallback(() => {
+    if (currentPipePoints.length >= 2) {
+      const newPipe: PipeLineData = {
+        id: `pipe-${Date.now()}`,
+        points: currentPipePoints,
+        label: currentPipeLabel,
+        color: currentPipeColor,
+      };
+      setPipeLines(prev => [...prev, newPipe]);
+      toast({
+        title: "Rør tegnet",
+        description: `${currentPipeLabel}: ${getTotalPipeLength(currentPipePoints).toFixed(1)} meter`,
+      });
+    }
+    setIsDrawingPipe(false);
+    setCurrentPipePoints([]);
+    setCurrentPipeLabel("");
+  }, [currentPipePoints, currentPipeLabel, currentPipeColor, toast]);
+
+  const removePipeLine = (id: string) => {
+    setPipeLines(prev => prev.filter(p => p.id !== id));
   };
 
   const getMarkerLabel = (type: string) => {
@@ -1579,10 +1657,61 @@ export default function InspectionForm() {
                     Utslippspunkt
                   </Button>
                 </div>
+
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <span className="text-sm text-muted-foreground self-center mr-2">Tegn rør:</span>
+                  <Button
+                    type="button"
+                    variant={isDrawingPipe && currentPipeLabel === "Rørgate" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => startDrawingPipe("Rørgate", "#8B4513")}
+                    data-testid="button-draw-pipe"
+                  >
+                    Rørgate (brun)
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={isDrawingPipe && currentPipeLabel === "Avløp" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => startDrawingPipe("Avløp", "#666666")}
+                    data-testid="button-draw-drain"
+                  >
+                    Avløp (grå)
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={isDrawingPipe && currentPipeLabel === "Utslipp" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => startDrawingPipe("Utslipp", "#0066cc")}
+                    data-testid="button-draw-outlet"
+                  >
+                    Utslipp (blå)
+                  </Button>
+                  {isDrawingPipe && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={finishDrawingPipe}
+                      data-testid="button-finish-pipe"
+                    >
+                      Fullfør tegning ({currentPipePoints.length} punkter)
+                    </Button>
+                  )}
+                </div>
                 
                 {activeMarkerType && (
                   <div className="mb-4 p-2 bg-muted rounded-md text-sm">
                     Klikk på kartet for å plassere: <strong>{getMarkerLabel(activeMarkerType)}</strong>
+                  </div>
+                )}
+
+                {isDrawingPipe && (
+                  <div className="mb-4 p-2 bg-amber-100 dark:bg-amber-900 rounded-md text-sm">
+                    Tegner: <strong>{currentPipeLabel}</strong> - Klikk for å legge til punkter. Klikk "Fullfør tegning" når ferdig.
+                    {currentPipePoints.length >= 2 && (
+                      <span className="ml-2">Lengde: {getTotalPipeLength(currentPipePoints).toFixed(1)} m</span>
+                    )}
                   </div>
                 )}
                 
@@ -1615,6 +1744,8 @@ export default function InspectionForm() {
                     <MapClickHandler
                       activeMarkerType={activeMarkerType}
                       onAddMarker={handleAddMarker}
+                      isDrawingPipe={isDrawingPipe}
+                      onAddPipePoint={handleAddPipePoint}
                     />
                     {markers.map((marker) => (
                       <Marker
@@ -1646,11 +1777,42 @@ export default function InspectionForm() {
                         </Popup>
                       </Marker>
                     ))}
+                    
+                    {/* Completed pipe lines */}
+                    {pipeLines.map((pipe) => (
+                      <Polyline
+                        key={pipe.id}
+                        positions={pipe.points}
+                        pathOptions={{ 
+                          color: pipe.color, 
+                          weight: 4,
+                          dashArray: pipe.label === "Utslipp" ? "10, 10" : undefined
+                        }}
+                      >
+                        <Tooltip permanent direction="center">
+                          {pipe.label}: {getTotalPipeLength(pipe.points).toFixed(1)} m
+                        </Tooltip>
+                      </Polyline>
+                    ))}
+                    
+                    {/* Current drawing line */}
+                    {isDrawingPipe && currentPipePoints.length >= 1 && (
+                      <Polyline
+                        positions={currentPipePoints}
+                        pathOptions={{ 
+                          color: currentPipeColor, 
+                          weight: 4,
+                          opacity: 0.7,
+                          dashArray: "5, 10"
+                        }}
+                      />
+                    )}
                   </MapContainer>
                 </div>
                 
                 {markers.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-4">
+                    <span className="text-sm text-muted-foreground self-center">Markører:</span>
                     {markers.map((marker) => (
                       <Badge
                         key={marker.id}
@@ -1671,6 +1833,30 @@ export default function InspectionForm() {
                           type="button"
                           onClick={() => removeMarker(marker.id)}
                           className="ml-1 hover:text-destructive"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                {pipeLines.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    <span className="text-sm text-muted-foreground self-center">Rørlinjer:</span>
+                    {pipeLines.map((pipe) => (
+                      <Badge
+                        key={pipe.id}
+                        variant="secondary"
+                        className="flex items-center gap-1"
+                        style={{ borderLeft: `4px solid ${pipe.color}` }}
+                      >
+                        {pipe.label}: {getTotalPipeLength(pipe.points).toFixed(1)} m
+                        <button
+                          type="button"
+                          onClick={() => removePipeLine(pipe.id)}
+                          className="ml-1 hover:text-destructive"
+                          data-testid={`button-remove-pipe-${pipe.id}`}
                         >
                           <X className="w-3 h-3" />
                         </button>
