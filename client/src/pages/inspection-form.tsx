@@ -1700,10 +1700,10 @@ export default function InspectionForm() {
                             <FormControl>
                               <Input 
                                 type="number"
-                                className="w-28 text-right"
+                                className="w-28 text-right bg-muted"
                                 data-testid="input-soknad-dispensasjon-price"
+                                readOnly
                                 {...field}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                               />
                             </FormControl>
                             <span className="text-sm text-muted-foreground">kr</span>
