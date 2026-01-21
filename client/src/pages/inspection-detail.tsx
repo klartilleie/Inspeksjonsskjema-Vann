@@ -11,7 +11,7 @@ import type { Inspection } from "@shared/schema";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { ArrowLeft, User, MapPin, Mail, Phone, Calendar, Droplets, Thermometer, Plug, Wrench, Camera, FileDown } from "lucide-react";
-import logoUrl from "@assets/Lars_Logo-01_1765460766343.jpg";
+import logoUrl from "@assets/Smart_Hjem_As_-_FinalizedLogoD2L5_(Transparent)-01_1769033291619.png";
 
 export default function InspectionDetail() {
   const { toast } = useToast();
@@ -86,7 +86,7 @@ export default function InspectionDetail() {
             <Button variant="ghost" size="icon" onClick={() => window.history.back()} data-testid="button-back">
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <img src={logoUrl} alt="Klar til Leie AS" className="h-8 w-auto object-contain" />
+            <img src={logoUrl} alt="Smart Hjem AS" className="h-8 w-auto object-contain" />
             <h1 className="text-xl font-semibold">Befaringsdetaljer</h1>
           </div>
           <Button

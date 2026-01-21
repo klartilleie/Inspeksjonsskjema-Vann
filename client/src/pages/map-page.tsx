@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-import logoUrl from "@assets/Lars_Logo-01_1765460766343.jpg";
+import logoUrl from "@assets/Smart_Hjem_As_-_FinalizedLogoD2L5_(Transparent)-01_1769033291619.png";
 import "leaflet/dist/leaflet.css";
 
 const biocleanerIcon = new L.DivIcon({
@@ -333,7 +333,7 @@ export default function MapPage() {
               <ArrowLeft className="w-4 h-4 mr-2" />
               Tilbake til skjema
             </Button>
-            <img src={logoUrl} alt="Klar til Leie AS" className="h-12 w-auto object-contain" />
+            <img src={logoUrl} alt="Smart Hjem AS" className="h-12 w-auto object-contain" />
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">{user?.fullName}</span>

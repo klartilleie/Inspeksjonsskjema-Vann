@@ -54,7 +54,7 @@ import {
   Printer,
   Info,
 } from "lucide-react";
-import logoUrl from "@assets/Lars_Logo-01_1765460766343.jpg";
+import logoUrl from "@assets/Smart_Hjem_As_-_FinalizedLogoD2L5_(Transparent)-01_1769033291619.png";
 import "leaflet/dist/leaflet.css";
 
 const biocleanerIcon = new L.DivIcon({
@@ -701,7 +701,7 @@ export default function InspectionForm() {
         </div>
 
         <div className="mb-8 flex flex-col items-center text-center">
-          <img src={logoUrl} alt="Klar til Leie AS" className="h-48 w-auto object-contain mb-4" />
+          <img src={logoUrl} alt="Smart Hjem AS" className="h-48 w-auto object-contain mb-4" />
           <h1 className="text-2xl md:text-3xl font-semibold text-foreground mb-2">
             Befaringsskjema: Lett Avløps-/Gråvannsystem
           </h1>

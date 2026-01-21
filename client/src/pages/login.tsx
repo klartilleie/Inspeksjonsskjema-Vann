@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/queryClient";
 import { Loader2, LogIn, User, Lock, UserPlus } from "lucide-react";
-import logoUrl from "@assets/Lars_Logo-01_1765460766343.jpg";
+import logoUrl from "@assets/Smart_Hjem_As_-_FinalizedLogoD2L5_(Transparent)-01_1769033291619.png";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Brukernavn er påkrevd"),
@@ -122,7 +122,7 @@ export default function Login() {
         <Card className="w-full max-w-md">
           <CardHeader className="text-center space-y-4">
             <div className="flex justify-center">
-              <img src={logoUrl} alt="Klar til Leie AS" className="h-40 w-auto object-contain" />
+              <img src={logoUrl} alt="Smart Hjem AS" className="h-40 w-auto object-contain" />
             </div>
             <CardTitle className="text-xl">Første gangs oppsett</CardTitle>
             <p className="text-sm text-muted-foreground">
@@ -222,7 +222,7 @@ export default function Login() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
-            <img src={logoUrl} alt="Klar til Leie AS" className="h-40 w-auto object-contain" />
+            <img src={logoUrl} alt="Smart Hjem AS" className="h-40 w-auto object-contain" />
           </div>
           <CardTitle className="text-xl">Logg inn</CardTitle>
           <p className="text-sm text-muted-foreground">

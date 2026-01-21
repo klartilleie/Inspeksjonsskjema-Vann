@@ -38,7 +38,7 @@ import type { Inspection } from "@shared/schema";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { Trash2, Eye, LogOut, FileText, Image, Users, UserPlus, User, Lock, Loader2, Download, Home } from "lucide-react";
-import logoUrl from "@assets/Lars_Logo-01_1765460766343.jpg";
+import logoUrl from "@assets/Smart_Hjem_As_-_FinalizedLogoD2L5_(Transparent)-01_1769033291619.png";
 
 interface AppUser {
   id: string;
@@ -155,7 +155,7 @@ export default function AdminDashboard() {
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <img src={logoUrl} alt="Klar til Leie AS" className="h-16 w-auto object-contain" />
+            <img src={logoUrl} alt="Smart Hjem AS" className="h-16 w-auto object-contain" />
             <h1 className="text-xl font-semibold">Admin Dashboard</h1>
           </div>
           <div className="flex items-center gap-4">
