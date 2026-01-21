@@ -199,7 +199,7 @@ function PrintMapControl({ onPrint }: { onPrint: () => void }) {
         const div = L.DomUtil.create("div", "leaflet-bar leaflet-control");
         const button = L.DomUtil.create("a", "", div);
         button.href = "#";
-        button.title = "Skriv ut kart (1:500)";
+        button.title = "Skriv ut kart (1:200)";
         button.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin: 5px;"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>`;
         button.style.display = "flex";
         button.style.alignItems = "center";
@@ -261,7 +261,7 @@ export default function InspectionForm() {
     
     const map = mapRef.current;
     const center = map.getCenter();
-    const targetScale = 500;
+    const targetScale = 200;
     const dpi = 96;
     const metersPerPixelAtScale = targetScale / (dpi * 39.3701);
     const metersPerDegree = 111320 * Math.cos(center.lat * Math.PI / 180);
@@ -273,7 +273,7 @@ export default function InspectionForm() {
     setTimeout(() => {
       toast({
         title: "Klar for utskrift",
-        description: "Kartet er justert til målestokk 1:500. Bruk Ctrl+P for å skrive ut.",
+        description: "Kartet er justert til målestokk 1:200. Bruk Ctrl+P for å skrive ut.",
       });
       window.print();
     }, 500);
@@ -1789,10 +1789,7 @@ export default function InspectionForm() {
                           dashArray: pipe.label === "Utslipp" ? "10, 10" : undefined
                         }}
                       >
-                        <Tooltip permanent direction="center">
-                          {pipe.label}: {getTotalPipeLength(pipe.points).toFixed(1)} m
-                        </Tooltip>
-                      </Polyline>
+                        </Polyline>
                     ))}
                     
                     {/* Current drawing line */}
@@ -1874,7 +1871,7 @@ export default function InspectionForm() {
                     data-testid="button-print-map"
                   >
                     <Printer className="w-4 h-4 mr-2" />
-                    Skriv ut kart (1:500)
+                    Skriv ut kart (1:200)
                   </Button>
                 </div>
 
