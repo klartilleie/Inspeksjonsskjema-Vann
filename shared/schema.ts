@@ -242,6 +242,8 @@ export const STYRESKAP_OPTIONS = [
 ] as const;
 
 export const GRAVING_OPTIONS = [
+  { value: 25000, label: "25 000 kr" },
+  { value: 35000, label: "35 000 kr" },
   { value: 45000, label: "45 000 kr" },
   { value: 55000, label: "55 000 kr" },
   { value: 65000, label: "65 000 kr" },
@@ -255,6 +257,6 @@ export const DEFAULT_PRICES = {
   soknadUtslipp: 12500,
   soknadDispensasjon: 7500,
   innregulering: 16900,
-  graving: 45000,
+  graving: 25000,
   frakt: 6200,
 } as const;
