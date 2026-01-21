@@ -107,6 +107,10 @@ export type Inspection = typeof inspections.$inferSelect;
 export const inspectionFormSchema = z.object({
   customerName: z.string().min(1, "Kundenavn er påkrevd"),
   customerAddress: z.string().min(1, "Adresse er påkrevd"),
+  streetName: z.string().optional(),
+  houseNumber: z.string().optional(),
+  postalCode: z.string().optional(),
+  city: z.string().optional(),
   customerEmail: z.string().email("Ugyldig e-postadresse"),
   customerPhone: z.string().min(1, "Telefonnummer er påkrevd"),
   inspectionDateTime: z.string().min(1, "Dato og tid er påkrevd"),
@@ -166,6 +170,10 @@ export type InspectionFormData = z.infer<typeof inspectionFormSchema>;
 export const clientInspectionFormSchema = z.object({
   customerName: z.string().min(1, "Kundenavn er påkrevd"),
   customerAddress: z.string().min(1, "Adresse er påkrevd"),
+  streetName: z.string().optional(),
+  houseNumber: z.string().optional(),
+  postalCode: z.string().optional(),
+  city: z.string().optional(),
   customerEmail: z.string().email("Ugyldig e-postadresse"),
   customerPhone: z.string().min(1, "Telefonnummer er påkrevd"),
   inspectionDateTime: z.string().min(1, "Dato og tid er påkrevd"),

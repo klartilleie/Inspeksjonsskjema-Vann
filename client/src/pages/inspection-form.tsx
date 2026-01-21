@@ -3,7 +3,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { MapContainer, TileLayer, WMSTileLayer, Marker, Popup, useMapEvents, useMap, ScaleControl } from "react-leaflet";
-import { LoadScript, Autocomplete } from "@react-google-maps/api";
 import L from "leaflet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -102,7 +101,19 @@ function MapClickHandler({
   return null;
 }
 
-const GOOGLE_MAPS_LIBRARIES: ("places")[] = ["places"];
+interface KartverketAddress {
+  adressetekst: string;
+  adressenavn: string;
+  nummer: number;
+  bokstav?: string;
+  postnummer: string;
+  poststed: string;
+  kommunenavn: string;
+  representasjonspunkt: {
+    lat: number;
+    lon: number;
+  };
+}
 
 function MapUpdater({ center }: { center: [number, number] }) {
   const map = useMap();
@@ -191,7 +202,11 @@ export default function InspectionForm() {
   const [markers, setMarkers] = useState<MarkerData[]>([]);
   const [activeMarkerType, setActiveMarkerType] = useState<string | null>(null);
   const [mapCenter, setMapCenter] = useState<[number, number]>([59.9139, 10.7522]);
-  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const [addressQuery, setAddressQuery] = useState("");
+  const [addressSuggestions, setAddressSuggestions] = useState<KartverketAddress[]>([]);
+  const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
+  const [isSearchingAddress, setIsSearchingAddress] = useState(false);
+  const addressInputRef = useRef<HTMLInputElement>(null);
   const mapRef = useRef<L.Map | null>(null);
 
   const handleMarkerDrag = useCallback((markerId: string, newPosition: L.LatLng) => {
@@ -266,6 +281,10 @@ export default function InspectionForm() {
     defaultValues: {
       customerName: "",
       customerAddress: "",
+      streetName: "",
+      houseNumber: "",
+      postalCode: "",
+      city: "",
       customerEmail: "",
       customerPhone: "",
       inspectionDateTime: "",
@@ -376,23 +395,62 @@ export default function InspectionForm() {
     }
   };
 
-  const handlePlaceSelect = useCallback(() => {
-    if (autocompleteRef.current) {
-      const place = autocompleteRef.current.getPlace();
-      if (place.geometry?.location) {
-        const lat = place.geometry.location.lat();
-        const lng = place.geometry.location.lng();
-        setMapCenter([lat, lng]);
-        toast({
-          title: "Adresse funnet",
-          description: "Kartet er oppdatert til valgt adresse.",
-        });
-      }
-      if (place.formatted_address) {
-        form.setValue("customerAddress", place.formatted_address);
-      }
+  const searchKartverketAddress = useCallback(async (query: string) => {
+    if (query.length < 3) {
+      setAddressSuggestions([]);
+      return;
     }
-  }, [toast, form]);
+    
+    setIsSearchingAddress(true);
+    try {
+      const response = await fetch(
+        `https://ws.geonorge.no/adresser/v1/sok?sok=${encodeURIComponent(query)}&treffPerSide=10`
+      );
+      const data = await response.json();
+      if (data.adresser) {
+        setAddressSuggestions(data.adresser);
+        setShowAddressSuggestions(true);
+      }
+    } catch (error) {
+      console.error("Feil ved adressesøk:", error);
+    } finally {
+      setIsSearchingAddress(false);
+    }
+  }, []);
+
+  const handleAddressSelect = useCallback((address: KartverketAddress) => {
+    const streetWithNumber = `${address.adressenavn} ${address.nummer}${address.bokstav || ""}`;
+    const fullAddress = `${streetWithNumber}, ${address.postnummer} ${address.poststed}`;
+    
+    form.setValue("customerAddress", fullAddress);
+    form.setValue("streetName", address.adressenavn);
+    form.setValue("houseNumber", `${address.nummer}${address.bokstav || ""}`);
+    form.setValue("postalCode", address.postnummer);
+    form.setValue("city", address.poststed);
+    
+    setAddressQuery(fullAddress);
+    setShowAddressSuggestions(false);
+    setAddressSuggestions([]);
+    
+    if (address.representasjonspunkt) {
+      const lat = address.representasjonspunkt.lat;
+      const lng = address.representasjonspunkt.lon;
+      setMapCenter([lat, lng]);
+      toast({
+        title: "Adresse funnet",
+        description: `Kartet er oppdatert til ${fullAddress}`,
+      });
+    }
+  }, [form, toast]);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (addressQuery.length >= 3) {
+        searchKartverketAddress(addressQuery);
+      }
+    }, 300);
+    return () => clearTimeout(timeoutId);
+  }, [addressQuery, searchKartverketAddress]);
 
   const submitMutation = useMutation({
     mutationFn: async (data: ClientInspectionFormData) => {
@@ -410,6 +468,10 @@ export default function InspectionForm() {
       form.reset({
         customerName: "",
         customerAddress: "",
+        streetName: "",
+        houseNumber: "",
+        postalCode: "",
+        city: "",
         customerEmail: "",
         customerPhone: "",
         inspectionDateTime: "",
@@ -525,8 +587,7 @@ export default function InspectionForm() {
     await logout();
   };
 
-  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
-
+  
   const content = (
     <div className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto px-4 md:px-8 py-8">
@@ -606,46 +667,139 @@ export default function InspectionForm() {
                   control={form.control}
                   name="customerAddress"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="relative">
                       <FormLabel className="flex items-center gap-2">
                         <MapPin className="w-4 h-4" />
-                        Kunde Adresse og Postnummer *
+                        Søk etter adresse *
                       </FormLabel>
                       <FormControl>
-                        {googleMapsApiKey ? (
-                          <Autocomplete
-                            onLoad={(autocomplete) => {
-                              autocompleteRef.current = autocomplete;
-                            }}
-                            onPlaceChanged={handlePlaceSelect}
-                            options={{
-                              componentRestrictions: { country: "no" },
-                              types: ["address"],
-                            }}
-                          >
-                            <Input
-                              placeholder="Søk etter adresse..."
-                              data-testid="input-customer-address"
-                              {...field}
-                            />
-                          </Autocomplete>
-                        ) : (
+                        <div className="relative">
                           <Input
-                            placeholder="Adresse, postnummer og sted"
+                            ref={addressInputRef}
+                            placeholder="Begynn å skrive adresse..."
                             data-testid="input-customer-address"
-                            {...field}
+                            value={addressQuery}
+                            onChange={(e) => {
+                              setAddressQuery(e.target.value);
+                              field.onChange(e.target.value);
+                            }}
+                            onFocus={() => {
+                              if (addressSuggestions.length > 0) {
+                                setShowAddressSuggestions(true);
+                              }
+                            }}
+                            onBlur={() => {
+                              setTimeout(() => setShowAddressSuggestions(false), 200);
+                            }}
                           />
-                        )}
+                          {isSearchingAddress && (
+                            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
+                          )}
+                        </div>
                       </FormControl>
-                      {googleMapsApiKey && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Begynn å skrive adressen og velg fra listen for å vise på kartet
-                        </p>
+                      {showAddressSuggestions && addressSuggestions.length > 0 && (
+                        <div className="absolute z-50 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto">
+                          {addressSuggestions.map((address, index) => (
+                            <button
+                              key={index}
+                              type="button"
+                              className="w-full px-3 py-2 text-left hover:bg-accent text-sm border-b last:border-b-0"
+                              onClick={() => handleAddressSelect(address)}
+                              data-testid={`address-suggestion-${index}`}
+                            >
+                              <div className="font-medium">{address.adressetekst}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {address.postnummer} {address.poststed}, {address.kommunenavn}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
                       )}
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Velg fra listen for å fylle ut adressefelt og vise på kartet
+                      </p>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="streetName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Vegnavn</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Vegnavn"
+                            data-testid="input-street-name"
+                            readOnly
+                            className="bg-muted"
+                            {...field}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="houseNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Husnummer</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Nr."
+                            data-testid="input-house-number"
+                            readOnly
+                            className="bg-muted"
+                            {...field}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="postalCode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Postnummer</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="0000"
+                            data-testid="input-postal-code"
+                            readOnly
+                            className="bg-muted"
+                            {...field}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="city"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Poststed</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Poststed"
+                            data-testid="input-city"
+                            readOnly
+                            className="bg-muted"
+                            {...field}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
                 <FormField
                   control={form.control}
@@ -1931,18 +2085,6 @@ export default function InspectionForm() {
       </div>
     </div>
   );
-
-  if (googleMapsApiKey) {
-    return (
-      <LoadScript
-        googleMapsApiKey={googleMapsApiKey}
-        libraries={GOOGLE_MAPS_LIBRARIES}
-        loadingElement={<div className="flex justify-center items-center h-screen"><p>Laster Google Maps...</p></div>}
-      >
-        {content}
-      </LoadScript>
-    );
-  }
 
   return content;
 }
