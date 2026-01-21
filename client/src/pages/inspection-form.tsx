@@ -1858,7 +1858,7 @@ export default function InspectionForm() {
                         </span>
                       </div>
                       <div className="flex items-center justify-between pt-2">
-                        <span className="font-semibold">Alternativ 2 - Totalpris inkl. avsetning</span>
+                        <span className="font-semibold">TIL - Totalpris inkl. avsetning</span>
                         <span className="font-semibold text-lg" data-testid="text-offer-total-alt2">
                           kr {(offerTotals.total + 20000).toLocaleString("nb-NO")},-
                         </span>
