@@ -63,8 +63,18 @@ Preferred communication style: Simple, everyday language.
 └── migrations/       # Drizzle database migrations
 ```
 
+### Map Features (Situasjonsplan)
+The map section uses professional Norwegian map data:
+- **Background**: Kartverket WMTS topographic tiles from `https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png`
+- **Property Boundaries**: WMS layer from Matrikkelen showing official property boundaries (transparent overlay)
+- **Draggable Markers**: Biocleaner, Slamavskiller, and Utslippspunkt markers can be dragged to adjust placement
+- **Scale Control**: Metric scale bar in bottom-left corner
+- **Info Box**: "Situasjonsplan for Biocleaner" with current date in top-right corner
+- **Print Function**: Button to prepare map for printing at 1:500 scale (municipal requirement)
+- **Address Autocomplete**: Google Places integration (requires VITE_GOOGLE_MAPS_API_KEY)
+
 ### Form Sections
-The inspection form is organized into 5 main sections:
+The inspection form is organized into 7 main sections:
 1. Customer and Project Details (name, address, contact info)
 2. Drainage Solution Information (existing system, planned solutions)
 3. Installation Site Assessment (placement, frost protection)
