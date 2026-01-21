@@ -6,29 +6,18 @@ import { inspectionFormSchema, loginSchema, registerUserSchema, type Inspection 
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { generateInspectionPDF } from "./pdfGenerator";
 import crypto from "crypto";
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
 async function sendInspectionEmail(inspection: Inspection): Promise<boolean> {
-  const smtpHost = process.env.SMTP_HOST;
-  const smtpPort = parseInt(process.env.SMTP_PORT || "587");
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPass = process.env.SMTP_PASS;
+  const resendApiKey = process.env.resend_API;
   
-  if (!smtpHost || !smtpUser || !smtpPass) {
-    console.log("SMTP not configured, skipping email notification");
+  if (!resendApiKey) {
+    console.log("Resend API key not configured, skipping email notification");
     return false;
   }
   
   try {
-    const transporter = nodemailer.createTransport({
-      host: smtpHost,
-      port: smtpPort,
-      secure: smtpPort === 465,
-      auth: {
-        user: smtpUser,
-        pass: smtpPass,
-      },
-    });
+    const resend = new Resend(resendApiKey);
     
     const mapMarkers = inspection.mapMarkers as Array<{id: string, type: string, position: [number, number]}> || [];
     const markersList = mapMarkers.map(m => {
@@ -76,14 +65,14 @@ ${inspection.logisticsComments ? `LOGISTIKK:\n${inspection.logisticsComments}` :
 Dette er en automatisk generert e-post fra befaringsskjema-systemet.
     `;
     
-    await transporter.sendMail({
-      from: smtpUser,
-      to: "kundeservice@smarthjem.as",
+    await resend.emails.send({
+      from: "Befaringsskjema <onboarding@resend.dev>",
+      to: ["kundeservice@smarthjem.as"],
       subject: `Nytt befaringsskjema - ${inspection.customerName}`,
       text: emailContent,
     });
     
-    console.log("Email notification sent successfully");
+    console.log("Email notification sent successfully via Resend");
     return true;
   } catch (error) {
     console.error("Failed to send email:", error);
