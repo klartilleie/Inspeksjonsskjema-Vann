@@ -215,7 +215,14 @@ export default function InspectionForm() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => window.location.href = "/kart"}
+              onClick={() => {
+                const name = form.getValues("customerName");
+                const address = form.getValues("customerAddress");
+                const params = new URLSearchParams();
+                if (name) params.set("name", name);
+                if (address) params.set("address", address);
+                window.location.href = `/kart${params.toString() ? `?${params.toString()}` : ""}`;
+              }}
               data-testid="button-map"
             >
               <Map className="w-4 h-4 mr-2" />

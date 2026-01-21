@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from "react-leaflet";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
+import { useSearch } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +19,8 @@ import {
   CircleDot,
   Settings,
   LogOut,
+  Search,
+  Loader2,
 } from "lucide-react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
@@ -78,13 +81,28 @@ function MapClickHandler({
 export default function MapPage() {
   const { user, logout } = useAuth();
   const { toast } = useToast();
+  const searchString = useSearch();
   const mapRef = useRef<HTMLDivElement>(null);
   const [markers, setMarkers] = useState<MarkerData[]>([]);
   const [activeMarkerType, setActiveMarkerType] = useState<string | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
+  const [addressSearch, setAddressSearch] = useState("");
   const [technicalNotes, setTechnicalNotes] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchString);
+    const name = params.get("name");
+    const address = params.get("address");
+    if (name) setCustomerName(decodeURIComponent(name));
+    if (address) {
+      const decodedAddress = decodeURIComponent(address);
+      setCustomerAddress(decodedAddress);
+      setAddressSearch(decodedAddress);
+    }
+  }, [searchString]);
   const [prices, setPrices] = useState<PriceEstimate>({
     biocleaner: 45000,
     slamavskiller: 25000,
@@ -389,6 +407,34 @@ export default function MapPage() {
                     Klikk på kartet for å plassere: <strong>{getMarkerLabel(activeMarkerType)}</strong>
                   </div>
                 )}
+                
+                <div className="flex gap-2 mb-4">
+                  <div className="flex-1">
+                    <Input
+                      value={addressSearch}
+                      onChange={(e) => setAddressSearch(e.target.value)}
+                      placeholder="Søk etter adresse..."
+                      data-testid="input-address-search"
+                    />
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      toast({
+                        title: "Adressesøk",
+                        description: "Adresse-API er ikke konfigurert ennå. Kontakt administrator.",
+                      });
+                    }}
+                    disabled={isSearching || !addressSearch}
+                    data-testid="button-search-address"
+                  >
+                    {isSearching ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Search className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
                 
                 <div ref={mapRef} className="h-[500px] rounded-lg overflow-hidden border">
                   <MapContainer
