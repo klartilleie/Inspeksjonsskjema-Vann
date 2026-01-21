@@ -314,6 +314,7 @@ export default function InspectionForm() {
   });
 
   const watchBiocleanerModel = form.watch("biocleanerModel");
+  const watchBiocleanerType = form.watch("biocleanerType");
   const watchBiocleanerPrice = form.watch("biocleanerPrice");
   const watchStyreskapPrice = form.watch("styreskapPrice");
   const watchSoknadUtslippPrice = form.watch("soknadUtslippPrice");
@@ -337,11 +338,28 @@ export default function InspectionForm() {
 
   const offerTotals = calculateOfferTotals();
 
+  const calculateBiocleanerPrice = useCallback((modelId: string, typeId: string) => {
+    const model = BIOCLEANER_MODELS.find(m => m.id === modelId);
+    const type = BIOCLEANER_TYPES.find(t => t.id === typeId);
+    if (model && type) {
+      return model.defaultPrice + type.priceAdjustment;
+    }
+    return model?.defaultPrice || 0;
+  }, []);
+
   const handleBiocleanerModelChange = (modelId: string) => {
     form.setValue("biocleanerModel", modelId);
-    const model = BIOCLEANER_MODELS.find(m => m.id === modelId);
-    if (model) {
-      form.setValue("biocleanerPrice", model.defaultPrice);
+    const currentType = form.getValues("biocleanerType") || "optima";
+    const price = calculateBiocleanerPrice(modelId, currentType);
+    form.setValue("biocleanerPrice", price);
+  };
+
+  const handleBiocleanerTypeChange = (typeId: string) => {
+    form.setValue("biocleanerType", typeId);
+    const currentModel = form.getValues("biocleanerModel");
+    if (currentModel) {
+      const price = calculateBiocleanerPrice(currentModel, typeId);
+      form.setValue("biocleanerPrice", price);
     }
   };
 
@@ -1562,7 +1580,7 @@ export default function InspectionForm() {
                         <FormLabel>Type</FormLabel>
                         <Select
                           value={field.value || ""}
-                          onValueChange={field.onChange}
+                          onValueChange={handleBiocleanerTypeChange}
                           data-testid="select-biocleaner-type"
                         >
                           <FormControl>
@@ -1573,7 +1591,7 @@ export default function InspectionForm() {
                           <SelectContent>
                             {BIOCLEANER_TYPES.map((type) => (
                               <SelectItem key={type.id} value={type.id}>
-                                {type.name} - {type.description}
+                                {type.name} - {type.description} {type.priceAdjustment > 0 && `(+${type.priceAdjustment.toLocaleString("nb-NO")} kr)`}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -1748,10 +1766,10 @@ export default function InspectionForm() {
                             <FormControl>
                               <Input 
                                 type="number"
-                                className="w-28 text-right"
+                                className="w-28 text-right bg-muted"
                                 data-testid="input-frakt-price"
+                                readOnly
                                 {...field}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                               />
                             </FormControl>
                             <span className="text-sm text-muted-foreground">kr</span>

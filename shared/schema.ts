@@ -230,9 +230,9 @@ export const BIOCLEANER_MODELS = [
 ] as const;
 
 export const BIOCLEANER_TYPES = [
-  { id: "optima", name: "Optima", description: "Standard-løsning" },
-  { id: "comfort", name: "Comfort", description: "Med fjernstyring" },
-  { id: "exclusive", name: "Exclusive", description: "Med tertiærfilter" },
+  { id: "optima", name: "Optima", description: "Standard-løsning", priceAdjustment: 0 },
+  { id: "comfort", name: "Comfort", description: "Med fjernstyring", priceAdjustment: 15000 },
+  { id: "exclusive", name: "Exclusive", description: "Med tertiærfilter", priceAdjustment: 35000 },
 ] as const;
 
 export const STYRESKAP_OPTIONS = [
