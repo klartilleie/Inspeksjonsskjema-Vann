@@ -118,7 +118,7 @@ interface KartverketAddress {
 function MapUpdater({ center }: { center: [number, number] }) {
   const map = useMap();
   useEffect(() => {
-    map.setView(center, 19);
+    map.setView(center, 20);
   }, [center, map]);
   return null;
 }
