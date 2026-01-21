@@ -85,6 +85,7 @@ export const inspections = pgTable("inspections", {
   mapMarkers: jsonb("map_markers"),
   mapNotes: text("map_notes"),
   biocleanerModel: text("biocleaner_model"),
+  biocleanerType: text("biocleaner_type"),
   biocleanerPrice: integer("biocleaner_price"),
   numberOfHomes: text("number_of_homes"),
   styreskapSize: text("styreskap_size"),
@@ -140,6 +141,7 @@ export const inspectionFormSchema = z.object({
   })).optional(),
   mapNotes: z.string().optional(),
   biocleanerModel: z.string().optional(),
+  biocleanerType: z.string().optional(),
   biocleanerPrice: z.number().optional(),
   numberOfHomes: z.string().optional(),
   styreskapSize: z.string().optional(),
@@ -198,6 +200,7 @@ export const clientInspectionFormSchema = z.object({
   })).optional(),
   mapNotes: z.string().optional(),
   biocleanerModel: z.string().optional(),
+  biocleanerType: z.string().optional(),
   biocleanerPrice: z.number().optional(),
   numberOfHomes: z.string().optional(),
   styreskapSize: z.string().optional(),
@@ -216,10 +219,20 @@ export const clientInspectionFormSchema = z.object({
 export type ClientInspectionFormData = z.infer<typeof clientInspectionFormSchema>;
 
 export const BIOCLEANER_MODELS = [
-  { id: "bc6", name: "Biocleaner bc 6optima model 5 pe", pe: 5, defaultPrice: 78349 },
-  { id: "bc10", name: "Biocleaner bc 10optima model 8 pe", pe: 8, defaultPrice: 98792 },
-  { id: "bc12", name: "Biocleaner bc 12optima model 10 pe", pe: 10, defaultPrice: 115385 },
-  { id: "bc16", name: "Biocleaner bc 16 optima model 13 pe", pe: 13, defaultPrice: 131671 },
+  { id: "bc4", name: "BC 4 (1-4 PE)", pe: 4, volume: "2,3 m³", defaultPrice: 0 },
+  { id: "bc6", name: "BC 6 (1-6 PE)", pe: 6, volume: "3,0 m³", defaultPrice: 78349 },
+  { id: "bc8", name: "BC 8 (1-8 PE)", pe: 8, volume: "4,0 m³", defaultPrice: 98792 },
+  { id: "bc10", name: "BC 10 (1-10 PE)", pe: 10, volume: "5,0 m³", defaultPrice: 115385 },
+  { id: "bc15", name: "BC 15 (1-15 PE)", pe: 15, volume: "7,5 m³", defaultPrice: 131671 },
+  { id: "bc20", name: "BC 20 (1-20 PE)", pe: 20, volume: "10,0 m³", defaultPrice: 0 },
+  { id: "bc25", name: "BC 25 (1-25 PE)", pe: 25, volume: "12,5 m³", defaultPrice: 0 },
+  { id: "bc30", name: "BC 30 (1-30 PE)", pe: 30, volume: "15,0 m³", defaultPrice: 0 },
+] as const;
+
+export const BIOCLEANER_TYPES = [
+  { id: "optima", name: "Optima", description: "Standard-løsning" },
+  { id: "comfort", name: "Comfort", description: "Med fjernstyring" },
+  { id: "exclusive", name: "Exclusive", description: "Med tertiærfilter" },
 ] as const;
 
 export const STYRESKAP_OPTIONS = [

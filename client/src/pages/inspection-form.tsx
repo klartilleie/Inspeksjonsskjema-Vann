@@ -23,7 +23,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
-import { clientInspectionFormSchema, type ClientInspectionFormData, BIOCLEANER_MODELS, STYRESKAP_OPTIONS, DEFAULT_PRICES } from "@shared/schema";
+import { clientInspectionFormSchema, type ClientInspectionFormData, BIOCLEANER_MODELS, BIOCLEANER_TYPES, STYRESKAP_OPTIONS, DEFAULT_PRICES } from "@shared/schema";
 import {
   Select,
   SelectContent,
@@ -178,6 +178,7 @@ export default function InspectionForm() {
       mapMarkers: [],
       mapNotes: "",
       biocleanerModel: "",
+      biocleanerType: "optima",
       biocleanerPrice: 0,
       numberOfHomes: "1",
       styreskapSize: "small",
@@ -1338,7 +1339,7 @@ export default function InspectionForm() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-6 space-y-6">
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label>Biocleaner-modell</Label>
                     <Select
@@ -1361,13 +1362,42 @@ export default function InspectionForm() {
 
                   <FormField
                     control={form.control}
+                    name="biocleanerType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Type</FormLabel>
+                        <Select
+                          value={field.value || ""}
+                          onValueChange={field.onChange}
+                          data-testid="select-biocleaner-type"
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Velg type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {BIOCLEANER_TYPES.map((type) => (
+                              <SelectItem key={type.id} value={type.id}>
+                                {type.name} - {type.description}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
                     name="numberOfHomes"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Antall boliger/hytter</FormLabel>
                         <FormControl>
                           <Input 
-                            placeholder="f.eks. 1 enebolig, 2 boliger" 
+                            placeholder="f.eks. 1 enebolig" 
                             data-testid="input-number-of-homes"
                             {...field} 
                           />
