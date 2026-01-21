@@ -82,6 +82,8 @@ export const inspections = pgTable("inspections", {
   imageCount: integer("image_count").notNull(),
   imagesUploaded: boolean("images_uploaded").notNull(),
   logisticsComments: text("logistics_comments"),
+  mapMarkers: jsonb("map_markers"),
+  mapNotes: text("map_notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -117,6 +119,12 @@ export const inspectionFormSchema = z.object({
   technicalConnectionComments: z.string().optional(),
   imagePaths: z.array(z.string()).min(5, "Minimum 5 bilder er påkrevd"),
   logisticsComments: z.string().optional(),
+  mapMarkers: z.array(z.object({
+    id: z.string(),
+    type: z.enum(["biocleaner", "slamavskiller", "utslippspunkt"]),
+    position: z.tuple([z.number(), z.number()]),
+  })).optional(),
+  mapNotes: z.string().optional(),
 }).transform((data) => ({
   ...data,
   imageCount: data.imagePaths.length,
@@ -155,6 +163,12 @@ export const clientInspectionFormSchema = z.object({
   technicalConnectionComments: z.string().optional(),
   imagePaths: z.array(z.string()).default([]),
   logisticsComments: z.string().optional(),
+  mapMarkers: z.array(z.object({
+    id: z.string(),
+    type: z.enum(["biocleaner", "slamavskiller", "utslippspunkt"]),
+    position: z.tuple([z.number(), z.number()]),
+  })).optional(),
+  mapNotes: z.string().optional(),
 });
 
 export type ClientInspectionFormData = z.infer<typeof clientInspectionFormSchema>;

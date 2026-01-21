@@ -2,10 +2,94 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
-import { inspectionFormSchema, loginSchema, registerUserSchema } from "@shared/schema";
+import { inspectionFormSchema, loginSchema, registerUserSchema, type Inspection } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { generateInspectionPDF } from "./pdfGenerator";
 import crypto from "crypto";
+import nodemailer from "nodemailer";
+
+async function sendInspectionEmail(inspection: Inspection): Promise<boolean> {
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpPort = parseInt(process.env.SMTP_PORT || "587");
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  
+  if (!smtpHost || !smtpUser || !smtpPass) {
+    console.log("SMTP not configured, skipping email notification");
+    return false;
+  }
+  
+  try {
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: {
+        user: smtpUser,
+        pass: smtpPass,
+      },
+    });
+    
+    const mapMarkers = inspection.mapMarkers as Array<{id: string, type: string, position: [number, number]}> || [];
+    const markersList = mapMarkers.map(m => {
+      const label = m.type === "biocleaner" ? "Biocleaner" : m.type === "slamavskiller" ? "Slamavskiller" : "Utslippspunkt";
+      return `- ${label}: ${m.position[0].toFixed(6)}, ${m.position[1].toFixed(6)}`;
+    }).join("\n");
+    
+    const emailContent = `
+Nytt befaringsskjema mottatt!
+
+KUNDEINFORMASJON:
+- Kunde: ${inspection.customerName}
+- Adresse: ${inspection.customerAddress}
+- E-post: ${inspection.customerEmail}
+- Telefon: ${inspection.customerPhone}
+- Befaring: ${inspection.inspectionDateTime}
+- Utfylt av: ${inspection.reportFilledBy}
+
+AVLØPSLØSNING:
+- Eksisterende løsning: ${inspection.existingDrainageSolution}
+- Planlagt løsningstype: ${inspection.plannedSolutionType}
+- Planlagt plassering: ${inspection.plannedPlacement}
+
+FROSTBESKYTTELSE:
+- Naturlig frostfritt: ${inspection.isNaturallyFrostFree}
+- Frostsikringstiltak: ${inspection.frostProtectionMeasure}
+${inspection.frostProtectionComments ? `- Kommentar: ${inspection.frostProtectionComments}` : ""}
+
+TEKNISK TILKOBLING:
+- Trenger elektriker: ${inspection.needsElectrician}
+- Strømpunkt i nærheten: ${inspection.hasNearbyPowerPoint}
+- Trenger rørlegger: ${inspection.needsPlumber}
+${inspection.technicalConnectionComments ? `- Kommentar: ${inspection.technicalConnectionComments}` : ""}
+
+PLASSERINGSMARKØRER:
+${markersList || "Ingen markører plassert"}
+${inspection.mapNotes ? `\nNotat til plasseringstegning: ${inspection.mapNotes}` : ""}
+
+BILDER:
+- Antall bilder: ${inspection.imageCount}
+
+${inspection.logisticsComments ? `LOGISTIKK:\n${inspection.logisticsComments}` : ""}
+
+---
+Dette er en automatisk generert e-post fra befaringsskjema-systemet.
+    `;
+    
+    await transporter.sendMail({
+      from: smtpUser,
+      to: "kundeservice@smarthjem.as",
+      subject: `Nytt befaringsskjema - ${inspection.customerName}`,
+      text: emailContent,
+    });
+    
+    console.log("Email notification sent successfully");
+    return true;
+  } catch (error) {
+    console.error("Failed to send email:", error);
+    return false;
+  }
+}
 
 function hashPassword(password: string): string {
   return crypto.createHash("sha256").update(password).digest("hex");
@@ -259,6 +343,11 @@ export async function registerRoutes(
     try {
       const validatedData = inspectionFormSchema.parse(req.body);
       const inspection = await storage.createInspection(validatedData);
+      
+      sendInspectionEmail(inspection).catch(err => {
+        console.error("Email sending failed:", err);
+      });
+      
       res.status(201).json(inspection);
     } catch (error) {
       console.error("Error creating inspection:", error);

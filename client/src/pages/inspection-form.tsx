@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from "react-leaflet";
+import L from "leaflet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import {
   Form,
   FormControl,
@@ -38,15 +41,99 @@ import {
   Loader2,
   LogOut,
   Settings,
-  Map,
+  CircleDot,
+  Trash2,
 } from "lucide-react";
 import logoUrl from "@assets/Lars_Logo-01_1765460766343.jpg";
+import "leaflet/dist/leaflet.css";
+
+const biocleanerIcon = new L.DivIcon({
+  className: "custom-marker",
+  html: `<div style="background-color: #22c55e; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"><span style="color: white; font-weight: bold; font-size: 12px;">BC</span></div>`,
+  iconSize: [32, 32],
+  iconAnchor: [16, 16],
+});
+
+const slamavkillerIcon = new L.DivIcon({
+  className: "custom-marker",
+  html: `<div style="background-color: #3b82f6; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"><span style="color: white; font-weight: bold; font-size: 12px;">SA</span></div>`,
+  iconSize: [32, 32],
+  iconAnchor: [16, 16],
+});
+
+const utslippspunktIcon = new L.DivIcon({
+  className: "custom-marker",
+  html: `<div style="background-color: #ef4444; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"><span style="color: white; font-weight: bold; font-size: 12px;">UP</span></div>`,
+  iconSize: [32, 32],
+  iconAnchor: [16, 16],
+});
+
+interface MarkerData {
+  id: string;
+  type: "biocleaner" | "slamavskiller" | "utslippspunkt";
+  position: [number, number];
+}
+
+function MapClickHandler({
+  activeMarkerType,
+  onAddMarker,
+}: {
+  activeMarkerType: string | null;
+  onAddMarker: (lat: number, lng: number) => void;
+}) {
+  useMapEvents({
+    click: (e) => {
+      if (activeMarkerType) {
+        onAddMarker(e.latlng.lat, e.latlng.lng);
+      }
+    },
+  });
+  return null;
+}
 
 export default function InspectionForm() {
   const { toast } = useToast();
   const { user, logout } = useAuth();
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [markers, setMarkers] = useState<MarkerData[]>([]);
+  const [activeMarkerType, setActiveMarkerType] = useState<string | null>(null);
+
+  const handleAddMarker = (lat: number, lng: number) => {
+    if (!activeMarkerType) return;
+    const newMarker: MarkerData = {
+      id: `${Date.now()}`,
+      type: activeMarkerType as MarkerData["type"],
+      position: [lat, lng],
+    };
+    setMarkers((prev) => [...prev, newMarker]);
+    toast({
+      title: "Markør plassert",
+      description: `${getMarkerLabel(activeMarkerType)} er lagt til på kartet.`,
+    });
+  };
+
+  const removeMarker = (id: string) => {
+    setMarkers((prev) => prev.filter((m) => m.id !== id));
+  };
+
+  const getMarkerLabel = (type: string) => {
+    switch (type) {
+      case "biocleaner": return "Biocleaner";
+      case "slamavskiller": return "Slamavskiller";
+      case "utslippspunkt": return "Utslippspunkt";
+      default: return type;
+    }
+  };
+
+  const getMarkerIcon = (type: string) => {
+    switch (type) {
+      case "biocleaner": return biocleanerIcon;
+      case "slamavskiller": return slamavkillerIcon;
+      case "utslippspunkt": return utslippspunktIcon;
+      default: return biocleanerIcon;
+    }
+  };
 
   const form = useForm<ClientInspectionFormData>({
     resolver: zodResolver(clientInspectionFormSchema),
@@ -80,6 +167,8 @@ export default function InspectionForm() {
       technicalConnectionComments: "",
       imagePaths: [],
       logisticsComments: "",
+      mapMarkers: [],
+      mapNotes: "",
     },
   });
 
@@ -126,8 +215,11 @@ export default function InspectionForm() {
         technicalConnectionComments: "",
         imagePaths: [],
         logisticsComments: "",
+        mapMarkers: [],
+        mapNotes: "",
       });
       setUploadedImages([]);
+      setMarkers([]);
     },
     onError: () => {
       toast({
@@ -193,7 +285,11 @@ export default function InspectionForm() {
       });
       return;
     }
-    submitMutation.mutate(data);
+    const formDataWithMarkers = {
+      ...data,
+      mapMarkers: markers,
+    };
+    submitMutation.mutate(formDataWithMarkers);
   };
 
   const frostProtectionMeasure = form.watch("frostProtectionMeasure");
@@ -212,22 +308,6 @@ export default function InspectionForm() {
             <span data-testid="text-logged-in-user">{user?.fullName}</span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => {
-                const name = form.getValues("customerName");
-                const address = form.getValues("customerAddress");
-                const params = new URLSearchParams();
-                if (name) params.set("name", name);
-                if (address) params.set("address", address);
-                window.location.href = `/kart${params.toString() ? `?${params.toString()}` : ""}`;
-              }}
-              data-testid="button-map"
-            >
-              <Map className="w-4 h-4 mr-2" />
-              Kart & Tilbud
-            </Button>
             {user?.role === "admin" && (
               <Button
                 variant="outline"
@@ -1039,6 +1119,149 @@ export default function InspectionForm() {
                           placeholder="Noter adkomst for utstyr, lagringsplass, eventuelle hindringer..."
                           className="min-h-32"
                           data-testid="input-logistics-comments"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center gap-3 pb-4">
+                <div className="flex items-center justify-center w-8 h-8 rounded-md bg-primary text-primary-foreground text-sm font-semibold">
+                  6
+                </div>
+                <CardTitle className="text-lg">Plasseringstegning</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Marker plasseringen av Biocleaner, Slamavskiller og Utslippspunkt på kartet.
+                </p>
+                
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <Button
+                    type="button"
+                    variant={activeMarkerType === "biocleaner" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setActiveMarkerType(activeMarkerType === "biocleaner" ? null : "biocleaner")}
+                    data-testid="button-biocleaner"
+                  >
+                    <CircleDot className="w-4 h-4 mr-2 text-green-500" />
+                    Biocleaner
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={activeMarkerType === "slamavskiller" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setActiveMarkerType(activeMarkerType === "slamavskiller" ? null : "slamavskiller")}
+                    data-testid="button-slamavskiller"
+                  >
+                    <CircleDot className="w-4 h-4 mr-2 text-blue-500" />
+                    Slamavskiller
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={activeMarkerType === "utslippspunkt" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setActiveMarkerType(activeMarkerType === "utslippspunkt" ? null : "utslippspunkt")}
+                    data-testid="button-utslippspunkt"
+                  >
+                    <CircleDot className="w-4 h-4 mr-2 text-red-500" />
+                    Utslippspunkt
+                  </Button>
+                </div>
+                
+                {activeMarkerType && (
+                  <div className="mb-4 p-2 bg-muted rounded-md text-sm">
+                    Klikk på kartet for å plassere: <strong>{getMarkerLabel(activeMarkerType)}</strong>
+                  </div>
+                )}
+                
+                <div className="h-[400px] rounded-lg overflow-hidden border">
+                  <MapContainer
+                    center={[59.9139, 10.7522]}
+                    zoom={13}
+                    style={{ height: "100%", width: "100%" }}
+                  >
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                    <MapClickHandler
+                      activeMarkerType={activeMarkerType}
+                      onAddMarker={handleAddMarker}
+                    />
+                    {markers.map((marker) => (
+                      <Marker
+                        key={marker.id}
+                        position={marker.position}
+                        icon={getMarkerIcon(marker.type)}
+                      >
+                        <Popup>
+                          <div className="text-center">
+                            <strong>{getMarkerLabel(marker.type)}</strong>
+                            <br />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="mt-2"
+                              onClick={() => removeMarker(marker.id)}
+                            >
+                              <Trash2 className="w-3 h-3 mr-1" />
+                              Fjern
+                            </Button>
+                          </div>
+                        </Popup>
+                      </Marker>
+                    ))}
+                  </MapContainer>
+                </div>
+                
+                {markers.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    {markers.map((marker) => (
+                      <Badge
+                        key={marker.id}
+                        variant="secondary"
+                        className="flex items-center gap-1"
+                      >
+                        <span
+                          className={`w-2 h-2 rounded-full ${
+                            marker.type === "biocleaner"
+                              ? "bg-green-500"
+                              : marker.type === "slamavskiller"
+                              ? "bg-blue-500"
+                              : "bg-red-500"
+                          }`}
+                        />
+                        {getMarkerLabel(marker.type)}
+                        <button
+                          type="button"
+                          onClick={() => removeMarker(marker.id)}
+                          className="ml-1 hover:text-destructive"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                <FormField
+                  control={form.control}
+                  name="mapNotes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notater til plasseringstegning</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Beskriv plasseringen, avstander, terrenget..."
+                          className="min-h-24"
+                          data-testid="input-map-notes"
                           {...field}
                         />
                       </FormControl>
