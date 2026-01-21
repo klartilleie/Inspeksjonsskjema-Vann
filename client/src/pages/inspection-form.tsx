@@ -24,7 +24,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
-import { clientInspectionFormSchema, type ClientInspectionFormData, BIOCLEANER_MODELS, BIOCLEANER_TYPES, STYRESKAP_OPTIONS, DEFAULT_PRICES } from "@shared/schema";
+import { clientInspectionFormSchema, type ClientInspectionFormData, BIOCLEANER_MODELS, BIOCLEANER_TYPES, STYRESKAP_OPTIONS, GRAVING_OPTIONS, DEFAULT_PRICES } from "@shared/schema";
 import {
   Select,
   SelectContent,
@@ -1741,16 +1741,24 @@ export default function InspectionForm() {
                         name="gravingPrice"
                         render={({ field }) => (
                           <FormItem className="flex items-center gap-2 mb-0">
-                            <FormControl>
-                              <Input 
-                                type="number"
-                                className="w-28 text-right"
-                                data-testid="input-graving-price"
-                                {...field}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                              />
-                            </FormControl>
-                            <span className="text-sm text-muted-foreground">kr</span>
+                            <Select
+                              value={String(field.value)}
+                              onValueChange={(val) => field.onChange(parseInt(val))}
+                              data-testid="select-graving-price"
+                            >
+                              <FormControl>
+                                <SelectTrigger className="w-32">
+                                  <SelectValue placeholder="Velg pris" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {GRAVING_OPTIONS.map((option) => (
+                                  <SelectItem key={option.value} value={String(option.value)}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </FormItem>
                         )}
                       />

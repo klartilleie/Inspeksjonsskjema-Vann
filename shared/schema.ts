@@ -239,10 +239,20 @@ export const STYRESKAP_OPTIONS = [
   { id: "small", name: "Small", defaultPrice: 7200 },
 ] as const;
 
+export const GRAVING_OPTIONS = [
+  { value: 45000, label: "45 000 kr" },
+  { value: 55000, label: "55 000 kr" },
+  { value: 65000, label: "65 000 kr" },
+  { value: 75000, label: "75 000 kr" },
+  { value: 85000, label: "85 000 kr" },
+  { value: 95000, label: "95 000 kr" },
+  { value: 105000, label: "105 000 kr" },
+] as const;
+
 export const DEFAULT_PRICES = {
   soknadUtslipp: 12500,
   soknadDispensasjon: 7500,
   innregulering: 16900,
-  graving: 46300,
+  graving: 45000,
   frakt: 6200,
 } as const;
