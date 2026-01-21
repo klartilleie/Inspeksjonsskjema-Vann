@@ -7,7 +7,6 @@ import { AuthProvider, useAuth } from "@/lib/auth";
 import InspectionForm from "@/pages/inspection-form";
 import AdminDashboard from "@/pages/admin-dashboard";
 import InspectionDetail from "@/pages/inspection-detail";
-import MapPage from "@/pages/map-page";
 import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
@@ -70,9 +69,6 @@ function Router() {
       </Route>
       <Route path="/skjema/:id">
         {() => <ProtectedRoute component={InspectionDetail} />}
-      </Route>
-      <Route path="/kart">
-        {() => <ProtectedRoute component={MapPage} />}
       </Route>
       <Route component={NotFound} />
     </Switch>
