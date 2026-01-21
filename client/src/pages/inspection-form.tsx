@@ -1804,6 +1804,20 @@ export default function InspectionForm() {
               </CardContent>
             </Card>
 
+            <Card className="mb-6">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-semibold">Vilkår for tilbud</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-[9pt] text-muted-foreground space-y-2 leading-relaxed">
+                  <p>Dette tilbudet er gyldig i 30 dager fra datering.</p>
+                  <p><strong>Offentlige gebyrer:</strong> Alle oppgitte priser er eksklusive saksbehandlingsgebyrer fra kommunen. Slike gebyrer faktureres direkte fra kommunen til kunden.</p>
+                  <p><strong>Forbehold:</strong> Tilbudet forutsetter godkjent utslippstillatelse fra kommunen basert på prosjektert plassering i kartet.</p>
+                  <p><strong>Kontrakt:</strong> Endelige vilkår, garantier og fremdriftsplan fremkommer i den formelle utførelseskontrakten og ikke i dette tilbudet.</p>
+                </div>
+              </CardContent>
+            </Card>
+
             <div className="flex justify-end pb-8">
               <Button
                 type="submit"
