@@ -38,6 +38,7 @@ import {
   Loader2,
   LogOut,
   Settings,
+  Map,
 } from "lucide-react";
 import logoUrl from "@assets/Lars_Logo-01_1765460766343.jpg";
 
@@ -211,6 +212,15 @@ export default function InspectionForm() {
             <span data-testid="text-logged-in-user">{user?.fullName}</span>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.location.href = "/kart"}
+              data-testid="button-map"
+            >
+              <Map className="w-4 h-4 mr-2" />
+              Kart & Tilbud
+            </Button>
             {user?.role === "admin" && (
               <Button
                 variant="outline"
