@@ -1852,11 +1852,20 @@ export default function InspectionForm() {
                         </span>
                       </div>
                       <div className="flex items-center justify-between border-t pt-2">
-                        <span className="font-semibold">Total</span>
+                        <span className="font-semibold">Alternativ 1 - Totalpris</span>
                         <span className="font-semibold text-lg" data-testid="text-offer-total">
                           kr {offerTotals.total.toLocaleString("nb-NO")},-
                         </span>
                       </div>
+                      <div className="flex items-center justify-between pt-2">
+                        <span className="font-semibold">Alternativ 2 - Totalpris inkl. avsetning</span>
+                        <span className="font-semibold text-lg" data-testid="text-offer-total-alt2">
+                          kr {(offerTotals.total + 20000).toLocaleString("nb-NO")},-
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Dette beløpet inkluderer en avsetning på inntil 20 000 kr for å dekke uforutsette utfordringer i arbeidet (f.eks. ved behov for sprengning, kiling av fjell, fjerning av uventede masser eller ekstra sikring). Dette beløpet faktureres kun dersom slike forhold oppstår, og etter nærmere avtale med kunden.
+                      </p>
                     </div>
                   </div>
                 </div>
