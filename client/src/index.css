@@ -286,3 +286,35 @@
     inset: -1px;
   }
 }
+
+/* Print styles for map situasjonsplan */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  
+  .leaflet-container,
+  .leaflet-container * {
+    visibility: visible !important;
+  }
+  
+  .leaflet-container {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: 100vh !important;
+  }
+  
+  .map-info-control {
+    visibility: visible !important;
+  }
+  
+  .leaflet-control-scale {
+    visibility: visible !important;
+  }
+  
+  .print\:hidden {
+    display: none !important;
+  }
+}

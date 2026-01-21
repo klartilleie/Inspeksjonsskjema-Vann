@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, WMSTileLayer, Marker, Popup, useMapEvents, useMap, ScaleControl } from "react-leaflet";
 import { LoadScript, Autocomplete } from "@react-google-maps/api";
 import L from "leaflet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,6 +52,8 @@ import {
   CircleDot,
   Trash2,
   Calculator,
+  Printer,
+  Info,
 } from "lucide-react";
 import logoUrl from "@assets/Lars_Logo-01_1765460766343.jpg";
 import "leaflet/dist/leaflet.css";
@@ -110,6 +112,77 @@ function MapUpdater({ center }: { center: [number, number] }) {
   return null;
 }
 
+function MapInfoControl() {
+  const map = useMap();
+  
+  useEffect(() => {
+    const InfoControl = L.Control.extend({
+      onAdd: function() {
+        const div = L.DomUtil.create("div", "map-info-control");
+        const today = new Date().toLocaleDateString("nb-NO", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+        div.innerHTML = `
+          <div style="background: white; padding: 10px 15px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-family: system-ui, sans-serif;">
+            <div style="font-weight: bold; font-size: 14px; color: #1a1a1a; margin-bottom: 4px;">Situasjonsplan for Biocleaner</div>
+            <div style="font-size: 12px; color: #666;">${today}</div>
+          </div>
+        `;
+        return div;
+      }
+    });
+    
+    const infoControl = new InfoControl({ position: "topright" });
+    infoControl.addTo(map);
+    
+    return () => {
+      infoControl.remove();
+    };
+  }, [map]);
+  
+  return null;
+}
+
+function PrintMapControl({ onPrint }: { onPrint: () => void }) {
+  const map = useMap();
+  
+  useEffect(() => {
+    const PrintControl = L.Control.extend({
+      onAdd: function() {
+        const div = L.DomUtil.create("div", "leaflet-bar leaflet-control");
+        const button = L.DomUtil.create("a", "", div);
+        button.href = "#";
+        button.title = "Skriv ut kart (1:500)";
+        button.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin: 5px;"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>`;
+        button.style.display = "flex";
+        button.style.alignItems = "center";
+        button.style.justifyContent = "center";
+        button.style.width = "30px";
+        button.style.height = "30px";
+        button.style.cursor = "pointer";
+        
+        L.DomEvent.on(button, "click", (e: Event) => {
+          e.preventDefault();
+          onPrint();
+        });
+        
+        return div;
+      }
+    });
+    
+    const printControl = new PrintControl({ position: "topleft" });
+    printControl.addTo(map);
+    
+    return () => {
+      printControl.remove();
+    };
+  }, [map, onPrint]);
+  
+  return null;
+}
+
 export default function InspectionForm() {
   const { toast } = useToast();
   const { user, logout } = useAuth();
@@ -119,6 +192,38 @@ export default function InspectionForm() {
   const [activeMarkerType, setActiveMarkerType] = useState<string | null>(null);
   const [mapCenter, setMapCenter] = useState<[number, number]>([59.9139, 10.7522]);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
+
+  const handleMarkerDrag = useCallback((markerId: string, newPosition: L.LatLng) => {
+    setMarkers(prev => prev.map(m => 
+      m.id === markerId 
+        ? { ...m, position: [newPosition.lat, newPosition.lng] as [number, number] }
+        : m
+    ));
+  }, []);
+
+  const handlePrintMap = useCallback(() => {
+    if (!mapRef.current) return;
+    
+    const map = mapRef.current;
+    const center = map.getCenter();
+    const targetScale = 500;
+    const dpi = 96;
+    const metersPerPixelAtScale = targetScale / (dpi * 39.3701);
+    const metersPerDegree = 111320 * Math.cos(center.lat * Math.PI / 180);
+    const degreesPerPixel = metersPerPixelAtScale / metersPerDegree;
+    const targetZoom = Math.log2((360 / 256) / degreesPerPixel);
+    
+    map.setZoom(Math.round(targetZoom));
+    
+    setTimeout(() => {
+      toast({
+        title: "Klar for utskrift",
+        description: "Kartet er justert til målestokk 1:500. Bruk Ctrl+P for å skrive ut.",
+      });
+      window.print();
+    }, 500);
+  }, [toast]);
 
   const handleAddMarker = (lat: number, lng: number) => {
     if (!activeMarkerType) return;
@@ -1299,13 +1404,25 @@ export default function InspectionForm() {
                 <div className="h-[400px] rounded-lg overflow-hidden border">
                   <MapContainer
                     center={mapCenter}
-                    zoom={13}
+                    zoom={16}
                     style={{ height: "100%", width: "100%" }}
+                    ref={mapRef}
                   >
                     <TileLayer
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      attribution='&copy; <a href="https://kartverket.no">Kartverket</a>'
+                      url="https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png"
                     />
+                    <WMSTileLayer
+                      url="https://wms.geonorge.no/skwms1/wms.matrikkel.eiendomsgrenser?"
+                      layers="eiendomsgrense"
+                      format="image/png"
+                      transparent={true}
+                      opacity={0.7}
+                      attribution='&copy; <a href="https://kartverket.no">Kartverket - Matrikkelen</a>'
+                    />
+                    <ScaleControl position="bottomleft" metric={true} imperial={false} />
+                    <MapInfoControl />
+                    <PrintMapControl onPrint={handlePrintMap} />
                     <MapUpdater center={mapCenter} />
                     <MapClickHandler
                       activeMarkerType={activeMarkerType}
@@ -1316,11 +1433,17 @@ export default function InspectionForm() {
                         key={marker.id}
                         position={marker.position}
                         icon={getMarkerIcon(marker.type)}
+                        draggable={true}
+                        eventHandlers={{
+                          dragend: (e) => {
+                            handleMarkerDrag(marker.id, e.target.getLatLng());
+                          },
+                        }}
                       >
                         <Popup>
                           <div className="text-center">
                             <strong>{getMarkerLabel(marker.type)}</strong>
-                            <br />
+                            <p className="text-xs text-gray-500 mt-1">Dra for å flytte</p>
                             <Button
                               type="button"
                               variant="destructive"
@@ -1367,6 +1490,19 @@ export default function InspectionForm() {
                     ))}
                   </div>
                 )}
+
+                <div className="flex justify-end mt-4 print:hidden">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePrintMap}
+                    data-testid="button-print-map"
+                  >
+                    <Printer className="w-4 h-4 mr-2" />
+                    Skriv ut kart (1:500)
+                  </Button>
+                </div>
 
                 <FormField
                   control={form.control}
