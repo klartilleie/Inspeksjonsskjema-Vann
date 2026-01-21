@@ -118,7 +118,7 @@ interface KartverketAddress {
 function MapUpdater({ center }: { center: [number, number] }) {
   const map = useMap();
   useEffect(() => {
-    map.setView(center, 20);
+    map.setView(center, 21);
   }, [center, map]);
   return null;
 }
@@ -1589,13 +1589,16 @@ export default function InspectionForm() {
                 <div className="h-[400px] rounded-lg overflow-hidden border">
                   <MapContainer
                     center={mapCenter}
-                    zoom={16}
+                    zoom={18}
+                    maxZoom={21}
                     style={{ height: "100%", width: "100%" }}
                     ref={mapRef}
                   >
                     <TileLayer
                       attribution='&copy; <a href="https://kartverket.no">Kartverket</a>'
                       url="https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png"
+                      maxNativeZoom={18}
+                      maxZoom={21}
                     />
                     <WMSTileLayer
                       url="https://wms.geonorge.no/skwms1/wms.matrikkel.eiendomsgrenser?"
