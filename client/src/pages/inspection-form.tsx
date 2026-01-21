@@ -340,16 +340,29 @@ export default function InspectionForm() {
 
   const calculateBiocleanerPrice = useCallback((modelId: string, typeId: string) => {
     const model = BIOCLEANER_MODELS.find(m => m.id === modelId);
-    const type = BIOCLEANER_TYPES.find(t => t.id === typeId);
-    if (model && type) {
-      return model.defaultPrice + type.priceAdjustment;
+    if (!model) return 0;
+    
+    if (typeId === "optima") {
+      return model.optimaPrice || 0;
+    } else if (typeId === "comfort") {
+      return model.comfortPrice || 0;
+    } else if (typeId === "exclusive") {
+      return (model.comfortPrice || 0) + (model.exclusiveTillegg || 0);
     }
-    return model?.defaultPrice || 0;
+    return 0;
   }, []);
 
   const handleBiocleanerModelChange = (modelId: string) => {
     form.setValue("biocleanerModel", modelId);
-    const currentType = form.getValues("biocleanerType") || "optima";
+    const model = BIOCLEANER_MODELS.find(m => m.id === modelId);
+    let currentType = form.getValues("biocleanerType") || "optima";
+    
+    // If optima is selected but not available for this model, switch to comfort
+    if (currentType === "optima" && model && model.optimaPrice === null) {
+      currentType = "comfort";
+      form.setValue("biocleanerType", currentType);
+    }
+    
     const price = calculateBiocleanerPrice(modelId, currentType);
     form.setValue("biocleanerPrice", price);
   };
@@ -1589,11 +1602,16 @@ export default function InspectionForm() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {BIOCLEANER_TYPES.map((type) => (
-                              <SelectItem key={type.id} value={type.id}>
-                                {type.name} - {type.description} {type.priceAdjustment > 0 && `(+${type.priceAdjustment.toLocaleString("nb-NO")} kr)`}
-                              </SelectItem>
-                            ))}
+                            {BIOCLEANER_TYPES.map((type) => {
+                              const selectedModelId = form.getValues("biocleanerModel");
+                              const selectedModel = BIOCLEANER_MODELS.find(m => m.id === selectedModelId);
+                              const isDisabled = type.id === "optima" && selectedModel && selectedModel.optimaPrice === null;
+                              return (
+                                <SelectItem key={type.id} value={type.id} disabled={isDisabled}>
+                                  {type.name} - {type.description} {isDisabled && "(utgår)"}
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -1647,25 +1665,59 @@ export default function InspectionForm() {
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <span className="text-sm">Styreskap ({STYRESKAP_OPTIONS[0].name})</span>
-                      <FormField
-                        control={form.control}
-                        name="styreskapPrice"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center gap-2 mb-0">
-                            <FormControl>
-                              <Input 
-                                type="number"
-                                className="w-28 text-right"
-                                data-testid="input-styreskap-price"
-                                {...field}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                              />
-                            </FormControl>
-                            <span className="text-sm text-muted-foreground">kr</span>
-                          </FormItem>
-                        )}
-                      />
+                      <span className="text-sm">Styreskap</span>
+                      <div className="flex items-center gap-2">
+                        <FormField
+                          control={form.control}
+                          name="styreskapSize"
+                          render={({ field }) => (
+                            <FormItem className="mb-0">
+                              <Select
+                                value={field.value}
+                                onValueChange={(val) => {
+                                  field.onChange(val);
+                                  const option = STYRESKAP_OPTIONS.find(o => o.id === val);
+                                  if (option) {
+                                    form.setValue("styreskapPrice", option.defaultPrice);
+                                  }
+                                }}
+                                data-testid="select-styreskap-size"
+                              >
+                                <FormControl>
+                                  <SelectTrigger className="w-28">
+                                    <SelectValue placeholder="Velg" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {STYRESKAP_OPTIONS.map((option) => (
+                                    <SelectItem key={option.id} value={option.id}>
+                                      {option.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="styreskapPrice"
+                          render={({ field }) => (
+                            <FormItem className="flex items-center gap-2 mb-0">
+                              <FormControl>
+                                <Input 
+                                  type="number"
+                                  className="w-28 text-right bg-muted"
+                                  data-testid="input-styreskap-price"
+                                  readOnly
+                                  {...field}
+                                />
+                              </FormControl>
+                              <span className="text-sm text-muted-foreground">kr</span>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-between">
