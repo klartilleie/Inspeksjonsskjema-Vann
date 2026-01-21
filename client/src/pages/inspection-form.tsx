@@ -1852,7 +1852,7 @@ export default function InspectionForm() {
                         </span>
                       </div>
                       <div className="flex items-center justify-between border-t pt-2">
-                        <span className="font-semibold">Alternativ 1 - Totalpris</span>
+                        <span className="font-semibold">FRA - Totalpris</span>
                         <span className="font-semibold text-lg" data-testid="text-offer-total">
                           kr {offerTotals.total.toLocaleString("nb-NO")},-
                         </span>
