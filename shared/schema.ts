@@ -84,6 +84,20 @@ export const inspections = pgTable("inspections", {
   logisticsComments: text("logistics_comments"),
   mapMarkers: jsonb("map_markers"),
   mapNotes: text("map_notes"),
+  biocleanerModel: text("biocleaner_model"),
+  biocleanerPrice: integer("biocleaner_price"),
+  numberOfHomes: text("number_of_homes"),
+  styreskapSize: text("styreskap_size"),
+  styreskapPrice: integer("styreskap_price"),
+  soknadUtslippPrice: integer("soknad_utslipp_price"),
+  soknadDispensasjonPrice: integer("soknad_dispensasjon_price"),
+  innreguleringPrice: integer("innregulering_price"),
+  gravingPrice: integer("graving_price"),
+  fraktPrice: integer("frakt_price"),
+  offerSum: integer("offer_sum"),
+  offerMva: integer("offer_mva"),
+  offerTotal: integer("offer_total"),
+  offerComments: text("offer_comments"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -125,6 +139,20 @@ export const inspectionFormSchema = z.object({
     position: z.tuple([z.number(), z.number()]),
   })).optional(),
   mapNotes: z.string().optional(),
+  biocleanerModel: z.string().optional(),
+  biocleanerPrice: z.number().optional(),
+  numberOfHomes: z.string().optional(),
+  styreskapSize: z.string().optional(),
+  styreskapPrice: z.number().optional(),
+  soknadUtslippPrice: z.number().optional(),
+  soknadDispensasjonPrice: z.number().optional(),
+  innreguleringPrice: z.number().optional(),
+  gravingPrice: z.number().optional(),
+  fraktPrice: z.number().optional(),
+  offerSum: z.number().optional(),
+  offerMva: z.number().optional(),
+  offerTotal: z.number().optional(),
+  offerComments: z.string().optional(),
 }).transform((data) => ({
   ...data,
   imageCount: data.imagePaths.length,
@@ -169,6 +197,39 @@ export const clientInspectionFormSchema = z.object({
     position: z.tuple([z.number(), z.number()]),
   })).optional(),
   mapNotes: z.string().optional(),
+  biocleanerModel: z.string().optional(),
+  biocleanerPrice: z.number().optional(),
+  numberOfHomes: z.string().optional(),
+  styreskapSize: z.string().optional(),
+  styreskapPrice: z.number().optional(),
+  soknadUtslippPrice: z.number().optional(),
+  soknadDispensasjonPrice: z.number().optional(),
+  innreguleringPrice: z.number().optional(),
+  gravingPrice: z.number().optional(),
+  fraktPrice: z.number().optional(),
+  offerSum: z.number().optional(),
+  offerMva: z.number().optional(),
+  offerTotal: z.number().optional(),
+  offerComments: z.string().optional(),
 });
 
 export type ClientInspectionFormData = z.infer<typeof clientInspectionFormSchema>;
+
+export const BIOCLEANER_MODELS = [
+  { id: "bc6", name: "Biocleaner bc 6optima model 5 pe", pe: 5, defaultPrice: 78349 },
+  { id: "bc10", name: "Biocleaner bc 10optima model 8 pe", pe: 8, defaultPrice: 98792 },
+  { id: "bc12", name: "Biocleaner bc 12optima model 10 pe", pe: 10, defaultPrice: 115385 },
+  { id: "bc16", name: "Biocleaner bc 16 optima model 13 pe", pe: 13, defaultPrice: 131671 },
+] as const;
+
+export const STYRESKAP_OPTIONS = [
+  { id: "small", name: "Small", defaultPrice: 7200 },
+] as const;
+
+export const DEFAULT_PRICES = {
+  soknadUtslipp: 12500,
+  soknadDispensasjon: 7500,
+  innregulering: 16900,
+  graving: 46300,
+  frakt: 6200,
+} as const;
