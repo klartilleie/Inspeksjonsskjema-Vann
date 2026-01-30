@@ -1,7 +1,6 @@
 import { auth } from 'express-openid-connect';
-import type { Express } from "express";
-import session from "express-session";
-import connectPg from "connect-pg-simple";
+import type { Express, RequestHandler } from "express";
+import { storage } from "./storage";
 
 const config = {
   authRequired: false,
@@ -11,21 +10,32 @@ const config = {
   clientID: process.env.AUTH0_CLIENT_ID,
   issuerBaseURL: `https://${process.env.AUTH0_DOMAIN}`,
   routes: {
-    callback: '/api/callback', // Matcher din eksisterende logikk
+    callback: '/api/callback',
     login: '/api/login',
     logout: '/api/logout',
   }
 };
 
-export function setupAuth(app: Express) {
+export async function setupAuth(app: Express) {
   app.set("trust proxy", 1);
 
-  // Bruk Auth0 middleware
+  // Aktiver Auth0
   app.use(auth(config));
 
-  // En enkel rute for å sjekke hvem som er logget inn
-  app.get("/api/user", (req, res) => {
+  // Hent brukerdata og lagre/oppdater i din database
+  app.get("/api/user", async (req: any, res) => {
     if (req.oidc.isAuthenticated()) {
+      const claims = req.oidc.user;
+
+      // Valgfritt: Synkroniser med din storage.ts hvis du trenger det
+      await storage.upsertUser({
+        id: claims.sub,
+        email: claims.email,
+        firstName: claims.given_name || "",
+        lastName: claims.family_name || "",
+        profileImageUrl: claims.picture || "",
+      });
+
       res.json(req.oidc.user);
     } else {
       res.status(401).send();
@@ -33,8 +43,7 @@ export function setupAuth(app: Express) {
   });
 }
 
-// Middleware for å beskytte rutene dine
-export const isAuthenticated = (req: any, res: any, next: any) => {
+export const isAuthenticated: RequestHandler = (req: any, res, next) => {
   if (req.oidc.isAuthenticated()) {
     return next();
   }
