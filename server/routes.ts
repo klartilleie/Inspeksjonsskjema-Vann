@@ -1,3 +1,12 @@
+if (email === "kundeservice@smarthjem.as") {
+  // Denne koden MÅ kjøre for å opprette deg i databasen første gang
+  user = await storage.createUser({
+    id: req.oidc.user.sub,
+    username: email,
+    email: email,
+    role: "admin"
+  });
+}
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
