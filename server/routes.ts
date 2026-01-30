@@ -11,10 +11,29 @@ function hashPassword(password: string): string {
 }
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
-  // 1. Sett opp autentisering (Auth0 kobles på her)
+  // 1. AUTO-OPPRETT ADMIN (Kjører hver gang serveren starter)
+  async function ensureAdminExists() {
+    const adminUsername = "kundeservice@smarthjem.as";
+    const existingUser = await storage.getAppUserByUsername(adminUsername);
+
+    if (!existingUser) {
+      console.log("Oppretter standard admin-bruker på Render...");
+      await storage.createAppUser({
+        username: adminUsername,
+        password: hashPassword("Admin2026"),
+        fullName: "Admin",
+        role: "admin"
+      });
+      console.log("Admin-bruker opprettet suksessfullt.");
+    }
+  }
+
+  ensureAdminExists().catch(console.error);
+
+  // 2. Sett opp Auth0-konfigurasjon
   await setupAuth(app);
 
-  // 2. LOGGINN-LOGIKK (For din spesielle skjerm i bilde image_2f1e65.png)
+  // 3. LOGGINN-LOGIKK (For din hvite logginn-skjerm)
   app.post("/api/app/login", async (req, res) => {
     try {
       const { username, password } = loginSchema.parse(req.body);
@@ -24,7 +43,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         return res.status(401).json({ error: "Ugyldig brukernavn eller passord" });
       }
 
-      // Lagre sesjon manuelt for din egen logginn-skjerm
       (req.session as any).appUserId = user.id;
       (req.session as any).appUserRole = user.role;
 
@@ -34,24 +52,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // 3. Sjekk om bruker er logget inn (brukes av din frontend)
+  // 4. Brukersjekk (Brukes av frontend for å se om man er logget inn)
   app.get("/api/auth/user", (req: any, res) => {
-    // Sjekker både Auth0 og din manuelle sesjon
     if ((req.session as any).appUserId) {
-      return res.json({ id: (req.session as any).appUserId, role: (req.session as any).appUserRole });
+      return res.json({ 
+        id: (req.session as any).appUserId, 
+        role: (req.session as any).appUserRole,
+        username: "kundeservice@smarthjem.as" 
+      });
     }
-
-    if (req.oidc && req.oidc.isAuthenticated()) {
-      return res.json(req.oidc.user);
-    }
-
     res.status(401).json({ message: "Ikke logget inn" });
   });
 
-  // 4. API-ruter for inspeksjoner (Beskyttet)
+  // 5. Beskyttede ruter
   app.get("/api/inspections", async (req, res) => {
-    // Tvinger sjekk før man får se data
-    if (!(req.session as any).appUserId && !(req.oidc && req.oidc.isAuthenticated())) {
+    if (!(req.session as any).appUserId) {
       return res.status(401).send("Logg inn først");
     }
     const inspections = await storage.getAllInspections();
