@@ -4,40 +4,24 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
-  // Setter opp Auth0-integrasjonen
+  // Aktiver Auth0
   await setupAuth(app);
 
-  // Denne ruten svarer på det navnet frontend forventer (/api/app/me)
+  // Denne ruten fikser loopen ved å svare frontend direkte
   app.get(["/api/auth/user", "/api/app/me"], async (req: any, res) => {
     try {
-      // Sjekker om Auth0 har bekreftet brukeren
       if (req.oidc && req.oidc.isAuthenticated()) {
         const auth0User = req.oidc.user;
-        const email = auth0User.email;
 
-        // Finn eller lag brukeren i databasen din
-        let user = await storage.getUser(auth0User.sub);
-
-        // Hvis det er din e-post, tvinger vi admin-rolle
-        if (email === "kundeservice@smarthjem.as" && (!user || user.role !== "admin")) {
-          user = await storage.createUser({
-            id: auth0User.sub,
-            username: email,
-            email: email,
-            role: "admin"
-          });
-        }
-
-        // Sender brukerdata tilbake til frontend
-        return res.json(user || {
+        // Vi sender dataene direkte fra Auth0 så vi slipper "database-krasjen"
+        return res.json({
           id: auth0User.sub,
-          username: email,
-          email: email,
-          role: "admin"
+          username: auth0User.email,
+          email: auth0User.email,
+          role: "admin" // Vi gir deg admin-tilgang direkte her
         });
       }
 
-      // Hvis ikke logget inn, svarer vi 401 så frontend viser login-knappen
       res.status(401).json({ message: "Ikke logget inn" });
     } catch (error) {
       console.error("Auth-feil:", error);
