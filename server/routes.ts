@@ -1,94 +1,61 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
-import { inspectionFormSchema, type Inspection } from "@shared/schema";
+import { inspectionFormSchema, loginSchema, type Inspection } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { generateInspectionPDF } from "./pdfGenerator";
-import { Resend } from "resend";
+import crypto from "crypto";
 
-async function sendInspectionEmail(inspection: Inspection): Promise<boolean> {
-  const resendApiKey = process.env.resend_API;
-  if (!resendApiKey) return false;
-
-  try {
-    const resend = new Resend(resendApiKey);
-    const emailContent = `Ny befaring mottatt fra ${inspection.customerName}.`;
-    await resend.emails.send({
-      from: "Befaringsskjema <onboarding@resend.dev>",
-      to: ["kundeservice@smarthjem.as"],
-      subject: `Nytt befaringsskjema - ${inspection.customerName}`,
-      text: emailContent,
-    });
-    return true;
-  } catch (error) {
-    return false;
-  }
+function hashPassword(password: string): string {
+  return crypto.createHash("sha256").update(password).digest("hex");
 }
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
-  // 1. Sett opp Auth0 (Håndterer /login, /logout og /callback)
+  // 1. Sett opp autentisering (Auth0 kobles på her)
   await setupAuth(app);
 
-  // 2. Middleware som tvinger innlogging på ALLE ruter (siden dere ikke har forside)
-  // Dette gjør at man blir sendt rett til Auth0 hvis man ikke er logget inn
-  app.use((req, res, next) => {
-    if (req.path === '/login' || req.path === '/callback' || req.path.startsWith('/api/public')) {
-      return next();
-    }
-    isAuthenticated(req, res, next);
-  });
-
-  // 3. Auth0 Bruker-endepunkt med AUTO-ADMIN
-  app.get("/api/auth/user", async (req: any, res) => {
+  // 2. LOGGINN-LOGIKK (For din spesielle skjerm i bilde image_2f1e65.png)
+  app.post("/api/app/login", async (req, res) => {
     try {
-      if (req.oidc && req.oidc.user) {
-        const userId = req.oidc.user.sub;
-        let user = await storage.getUser(userId);
+      const { username, password } = loginSchema.parse(req.body);
+      const user = await storage.getAppUserByUsername(username);
 
-        // Auto-Admin sjekk
-        if (req.oidc.user.email === "kundeservice@smarthjem.as") {
-          if (!user) {
-            user = await storage.createUser({
-              id: userId,
-              username: req.oidc.user.email,
-              email: req.oidc.user.email,
-              role: "admin"
-            });
-          }
-        }
-        return res.json(user || req.oidc.user);
+      if (!user || user.password !== hashPassword(password)) {
+        return res.status(401).json({ error: "Ugyldig brukernavn eller passord" });
       }
-      res.status(401).json({ message: "Ikke autentisert" });
+
+      // Lagre sesjon manuelt for din egen logginn-skjerm
+      (req.session as any).appUserId = user.id;
+      (req.session as any).appUserRole = user.role;
+
+      res.json({ id: user.id, username: user.username, role: user.role });
     } catch (error) {
-      res.status(500).json({ message: "Feil ved henting av bruker" });
+      res.status(400).json({ error: "Ugyldig forespørsel" });
     }
   });
 
-  // 4. Inspeksjons-ruter (Nå beskyttet av middleware over)
-  app.post("/api/inspections", async (req, res) => {
-    try {
-      const validatedData = inspectionFormSchema.parse(req.body);
-      const inspection = await storage.createInspection(validatedData);
-      sendInspectionEmail(inspection);
-      res.status(201).json(inspection);
-    } catch (error) {
-      res.status(400).json({ error: "Ugyldige data" });
+  // 3. Sjekk om bruker er logget inn (brukes av din frontend)
+  app.get("/api/auth/user", (req: any, res) => {
+    // Sjekker både Auth0 og din manuelle sesjon
+    if ((req.session as any).appUserId) {
+      return res.json({ id: (req.session as any).appUserId, role: (req.session as any).appUserRole });
     }
+
+    if (req.oidc && req.oidc.isAuthenticated()) {
+      return res.json(req.oidc.user);
+    }
+
+    res.status(401).json({ message: "Ikke logget inn" });
   });
 
+  // 4. API-ruter for inspeksjoner (Beskyttet)
   app.get("/api/inspections", async (req, res) => {
+    // Tvinger sjekk før man får se data
+    if (!(req.session as any).appUserId && !(req.oidc && req.oidc.isAuthenticated())) {
+      return res.status(401).send("Logg inn først");
+    }
     const inspections = await storage.getAllInspections();
     res.json(inspections);
-  });
-
-  app.get("/api/inspections/:id/pdf", async (req, res) => {
-    const inspection = await storage.getInspection(req.params.id);
-    if (!inspection) return res.status(404).send();
-    const doc = generateInspectionPDF(inspection);
-    res.setHeader("Content-Type", "application/pdf");
-    doc.pipe(res);
-    doc.end();
   });
 
   return httpServer;
