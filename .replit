@@ -45,3 +45,4 @@ integrations = ["javascript_object_storage:1.0.0", "javascript_mem_db:1.0.0", "j
 
 [userenv.shared]
 resend_API = "re_LoMPqby4_BqpmHhz1nhuRCCgckNXquMFi"
+Inspeksjonsskjema_db = "postgresql://inspeksjonsskjema_db_user:AkTWbslOvZ21L2U05JNe8VzsuuYDd1bT@dpg-d5u7q9ruibrs739unk7g-a.frankfurt-postgres.render.com/inspeksjonsskjema_db"

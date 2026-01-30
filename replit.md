@@ -43,8 +43,9 @@ Preferred communication style: Simple, everyday language.
 ### Data Layer
 - **ORM**: Drizzle ORM configured for PostgreSQL
 - **Schema Location**: `shared/schema.ts` contains all database schemas and Zod validation schemas
-- **Current Storage**: MemStorage class (in-memory) - designed for easy migration to PostgreSQL
-- **Database Config**: Drizzle Kit configured with `DATABASE_URL` environment variable
+- **Primary Database**: Render PostgreSQL (external) via `Inspeksjonsskjema_db` environment variable with SSL
+- **Fallback Database**: Replit PostgreSQL via `DATABASE_URL` environment variable
+- **Database Config**: Uses `Inspeksjonsskjema_db` if available, otherwise falls back to `DATABASE_URL`
 
 ### Project Structure
 ```
