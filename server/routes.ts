@@ -11,64 +11,70 @@ function hashPassword(password: string): string {
 }
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
-  // 1. AUTO-OPPRETT ADMIN (Kjører hver gang serveren starter)
+  // 1. AUTO-ADMIN: Sikrer at brukeren finnes med riktig hashet passord
   async function ensureAdminExists() {
-    const adminUsername = "kundeservice@smarthjem.as";
-    const existingUser = await storage.getAppUserByUsername(adminUsername);
+    const adminEmail = "kundeservice@smarthjem.as";
+    const user = await storage.getAppUserByUsername(adminEmail);
+    const targetHash = hashPassword("Admin2026");
 
-    if (!existingUser) {
-      console.log("Oppretter standard admin-bruker på Render...");
+    if (!user) {
       await storage.createAppUser({
-        username: adminUsername,
-        password: hashPassword("Admin2026"),
+        username: adminEmail,
+        password: targetHash,
         fullName: "Admin",
         role: "admin"
       });
-      console.log("Admin-bruker opprettet suksessfullt.");
+      console.log("Admin opprettet på nytt.");
+    } else if (user.password !== targetHash) {
+      // Oppdaterer passordet hvis det er feil hash i databasen
+      console.log("Oppdaterer admin-passord...");
+      await storage.updateAppUserPassword(user.id, targetHash);
     }
   }
 
   ensureAdminExists().catch(console.error);
-
-  // 2. Sett opp Auth0-konfigurasjon
   await setupAuth(app);
 
-  // 3. LOGGINN-LOGIKK (For din hvite logginn-skjerm)
+  // 2. FORBEDRET LOGGINN-RUTE
   app.post("/api/app/login", async (req, res) => {
     try {
-      const { username, password } = loginSchema.parse(req.body);
+      // Vi logger hva som kommer inn for å feilsøke (du ser dette i Render-loggen)
+      console.log("Innloggingsforsøk for:", req.body.username);
+
+      const { username, password } = req.body;
       const user = await storage.getAppUserByUsername(username);
 
-      if (!user || user.password !== hashPassword(password)) {
-        return res.status(401).json({ error: "Ugyldig brukernavn eller passord" });
+      if (!user) {
+        console.log("Bruker ikke funnet i databasen.");
+        return res.status(401).json({ error: "Ugyldig brukernavn" });
+      }
+
+      const submittedHash = hashPassword(password);
+      if (user.password !== submittedHash) {
+        console.log("Passord-match feilet.");
+        return res.status(401).json({ error: "Ugyldig passord" });
       }
 
       (req.session as any).appUserId = user.id;
       (req.session as any).appUserRole = user.role;
 
+      console.log("Innlogging vellykket for:", username);
       res.json({ id: user.id, username: user.username, role: user.role });
     } catch (error) {
-      res.status(400).json({ error: "Ugyldig forespørsel" });
+      console.error("Logginn-error:", error);
+      res.status(500).json({ error: "Serverfeil ved innlogging" });
     }
   });
 
-  // 4. Brukersjekk (Brukes av frontend for å se om man er logget inn)
   app.get("/api/auth/user", (req: any, res) => {
     if ((req.session as any).appUserId) {
-      return res.json({ 
-        id: (req.session as any).appUserId, 
-        role: (req.session as any).appUserRole,
-        username: "kundeservice@smarthjem.as" 
-      });
+      return res.json({ id: (req.session as any).appUserId, role: (req.session as any).appUserRole });
     }
     res.status(401).json({ message: "Ikke logget inn" });
   });
 
-  // 5. Beskyttede ruter
   app.get("/api/inspections", async (req, res) => {
-    if (!(req.session as any).appUserId) {
-      return res.status(401).send("Logg inn først");
-    }
+    if (!(req.session as any).appUserId) return res.status(401).send("Logg inn først");
     const inspections = await storage.getAllInspections();
     res.json(inspections);
   });
