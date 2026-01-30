@@ -21,11 +21,21 @@ const getOidcConfig = memoize(
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000;
   const pgStore = connectPg(session);
+  
+  // Use the new Render database if available, fallback to Replit DATABASE_URL
+  const databaseUrl = process.env.Inspeksjonsskjema_db || process.env.DATABASE_URL;
+  const isRenderDatabase = !!process.env.Inspeksjonsskjema_db;
+  
   const sessionStore = new pgStore({
-    conString: process.env.DATABASE_URL,
+    conString: databaseUrl,
     createTableIfMissing: false,
     ttl: sessionTtl,
     tableName: "sessions",
+    // Render database requires SSL
+    conObject: isRenderDatabase ? {
+      connectionString: databaseUrl,
+      ssl: { rejectUnauthorized: false }
+    } : undefined,
   });
   return session({
     secret: process.env.SESSION_SECRET!,
