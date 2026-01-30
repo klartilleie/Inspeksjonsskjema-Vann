@@ -1,51 +1,29 @@
-import { auth } from 'express-openid-connect';
-import type { Express, RequestHandler } from "express";
-import { storage } from "./storage";
+import { expressjwt } from "express-jwt";
+import jwksRsa from "jwks-rsa";
+import { auth } from "express-openid-connect";
+import type { Express, Request, Response, NextFunction } from "express";
 
+// Konfigurasjon for Auth0
 const config = {
   authRequired: false,
   auth0Logout: true,
   secret: process.env.AUTH0_SECRET,
-  baseURL: 'https://inspeksjonsskjema-vann.onrender.com',
+  baseURL: "https://inspeksjonsskjema-vann.onrender.com", // Din Render-URL
   clientID: process.env.AUTH0_CLIENT_ID,
-  issuerBaseURL: `https://${process.env.AUTH0_DOMAIN}`,
-  routes: {
-    callback: '/api/callback',
-    login: '/api/login',
-    logout: '/api/logout',
-  }
+  issuerBaseURL: `https://${process.env.AUTH0_DOMAIN}`, // Bruker domenet fra miljøvariabler
 };
 
 export async function setupAuth(app: Express) {
-  app.set("trust proxy", 1);
-
-  // Aktiver Auth0
+  // Dette aktiverer Auth0-motoren og lager automatisk ruter som /login og /callback
   app.use(auth(config));
 
-  // Hent brukerdata og lagre/oppdater i din database
-  app.get("/api/user", async (req: any, res) => {
-    if (req.oidc.isAuthenticated()) {
-      const claims = req.oidc.user;
-
-      // Valgfritt: Synkroniser med din storage.ts hvis du trenger det
-      await storage.upsertUser({
-        id: claims.sub,
-        email: claims.email,
-        firstName: claims.given_name || "",
-        lastName: claims.family_name || "",
-        profileImageUrl: claims.picture || "",
-      });
-
-      res.json(req.oidc.user);
-    } else {
-      res.status(401).send();
-    }
-  });
+  console.log("Auth0-systemet er aktivert for Render");
 }
 
-export const isAuthenticated: RequestHandler = (req: any, res, next) => {
-  if (req.oidc.isAuthenticated()) {
+// Middleware for å sjekke om brukeren er logget inn på beskyttede sider
+export function isAuthenticated(req: Request, res: Response, next: NextFunction) {
+  if ((req as any).oidc.isAuthenticated()) {
     return next();
   }
-  res.status(401).json({ message: "Unauthorized" });
-};
+  res.status(401).send("Vennligst logg inn");
+}
