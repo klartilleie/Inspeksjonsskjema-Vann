@@ -1,26 +1,33 @@
-import { expressjwt } from "express-jwt";
-import jwksRsa from "jwks-rsa";
 import { auth } from "express-openid-connect";
 import type { Express, Request, Response, NextFunction } from "express";
 
-// Konfigurasjon for Auth0
 const config = {
   authRequired: false,
   auth0Logout: true,
   secret: process.env.AUTH0_SECRET,
-  baseURL: "https://inspeksjonsskjema-vann.onrender.com", // Din Render-URL
+  baseURL: "https://inspeksjonsskjema-vann.onrender.com",
   clientID: process.env.AUTH0_CLIENT_ID,
-  issuerBaseURL: `https://${process.env.AUTH0_DOMAIN}`, // Bruker domenet fra miljøvariabler
+  issuerBaseURL: `https://${process.env.AUTH0_DOMAIN}`,
+  // DENNE LINJEN SENDER DEG VIDERE ETTER INNLOGGING:
+  authorizationParams: {
+    response_type: 'code',
+  },
+  routes: {
+    login: false, // Vi bruker vår egen knapp
+    callback: '/callback',
+    postLogoutRedirect: '/',
+  }
 };
 
 export async function setupAuth(app: Express) {
-  // Dette aktiverer Auth0-motoren og lager automatisk ruter som /login og /callback
   app.use(auth(config));
 
-  console.log("Auth0-systemet er aktivert for Render");
+  // Vi lager en manuell rute for /login som tvinger videresending til forsiden etterpå
+  app.get('/login', (req, res) => {
+    res.oidc.login({ returnTo: '/' }); 
+  });
 }
 
-// Middleware for å sjekke om brukeren er logget inn på beskyttede sider
 export function isAuthenticated(req: Request, res: Response, next: NextFunction) {
   if ((req as any).oidc.isAuthenticated()) {
     return next();
