@@ -6,29 +6,27 @@ const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
 
   try {
     for (const file of Array.from(files)) {
-      // 1. Konverter bildet til Base64-streng
+      // Vi må lese bildet som en Base64-streng for Cloudinary
       const reader = new FileReader();
-
-      const base64Promise = new Promise((resolve, reject) => {
+      const base64Promise = new Promise((resolve) => {
         reader.onload = () => resolve(reader.result);
-        reader.onerror = error => reject(error);
         reader.readAsDataURL(file);
       });
 
       const base64Data = await base64Promise;
 
-      // 2. Send til vår nye Cloudinary-rute
+      // Her sender vi bildet til din nye /api/upload rute
       const response = await fetch("/api/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ data: base64Data }),
       });
 
-      if (!response.ok) throw new Error("Cloudinary upload failed");
+      if (!response.ok) throw new Error("Cloudinary feilet");
 
       const result = await response.json();
 
-      // 3. Lagre URL-en fra Cloudinary i listen over bilder
+      // result.url er den direkte lenken til bildet i Cloudinary
       setUploadedImages((prev) => [...prev, result.url]);
     }
 
@@ -37,10 +35,9 @@ const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       description: `${files.length} bilde(r) ble lagret i Cloudinary.`,
     });
   } catch (error) {
-    console.error("Upload error:", error);
     toast({
       title: "Feil ved opplasting",
-      description: "Kunne ikke laste opp til Cloudinary. Sjekk API-nøkler i Render.",
+      description: "Sjekk at Cloudinary-nøklene ligger inne i Render Settings.",
       variant: "destructive",
     });
   } finally {
