@@ -1,43 +1,36 @@
-import type { Express, Request, Response } from "express";
-import { createServer, type Server } from "http";
-import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
-import { inspectionFormSchema } from "@shared/schema";
-import { generateInspectionPDF } from "./pdfGenerator";
+// Endre ruten slik at den støtter både /api/auth/user og /api/app/me
+app.get(["/api/auth/user", "/api/app/me"], async (req: any, res) => {
+  try {
+    // Sjekk om Auth0 har logget inn brukeren
+    if (req.oidc && req.oidc.isAuthenticated()) {
+      const auth0User = req.oidc.user;
+      const email = auth0User.email;
 
-export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
-  // 1. Aktiver Auth0
-  await setupAuth(app);
+      // Hent eller opprett bruker i din database
+      let user = await storage.getUser(auth0User.sub);
 
-  // 2. Sjekk bruker og gi Admin-tilgang
-  app.get("/api/auth/user", async (req: any, res) => {
-    try {
-      if (req.oidc && req.oidc.isAuthenticated()) {
-        const email = req.oidc.user.email;
-        let user = await storage.getUser(req.oidc.user.sub);
-
-        if (email === "kundeservice@smarthjem.as" && (!user || user.role !== "admin")) {
-          user = await storage.createUser({
-            id: req.oidc.user.sub,
-            username: email,
-            email: email,
-            role: "admin"
-          });
-        }
-        return res.json(user || req.oidc.user);
+      if (email === "kundeservice@smarthjem.as" && (!user || user.role !== "admin")) {
+        user = await storage.createUser({
+          id: auth0User.sub,
+          username: email,
+          email: email,
+          role: "admin"
+        });
       }
-      res.status(401).json({ message: "Ikke logget inn" });
-    } catch (error) {
-      console.error("Auth-feil:", error);
-      res.status(500).json({ message: "Serverfeil" });
+
+      // Returner brukerdata slik at frontend stopper loopen
+      return res.json(user || {
+        id: auth0User.sub,
+        username: email,
+        email: email,
+        role: "admin" // Vi tvinger admin-rolle her for deg
+      });
     }
-  });
 
-  // 3. Beskyttede ruter
-  app.get("/api/inspections", isAuthenticated, async (req, res) => {
-    const inspections = await storage.getAllInspections();
-    res.json(inspections);
-  });
-
-  return httpServer;
-}
+    // Hvis ikke logget inn, send 401
+    res.status(401).json({ message: "Ikke logget inn" });
+  } catch (error) {
+    console.error("Auth-sjekk feilet:", error);
+    res.status(500).json({ message: "Serverfeil" });
+  }
+});
