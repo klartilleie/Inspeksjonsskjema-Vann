@@ -1,18 +1,17 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import { apiRequest } from "./queryClient";
 
 interface AppUser {
   id: string;
   username: string;
-  fullName: string;
+  email?: string;
   role: string;
 }
 
 interface AuthContextType {
   user: AppUser | null;
   isLoading: boolean;
-  login: (username: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
+  login: () => void; // Endret: Ingen brukernavn/passord trengs lenger
+  logout: () => void;
   refreshUser: () => Promise<void>;
 }
 
@@ -28,27 +27,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkAuth = async () => {
     try {
+      // Vi sjekker nå mot /api/app/me som vi satte opp i routes.ts
       const response = await fetch("/api/app/me", { credentials: "include" });
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
+      } else {
+        setUser(null);
       }
     } catch (error) {
       console.error("Auth check failed:", error);
+      setUser(null);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const login = async (username: string, password: string) => {
-    const response = await apiRequest("POST", "/api/app/login", { username, password });
-    const userData = await response.json();
-    setUser(userData);
+  // Sender brukeren til Auth0-innloggingen
+  const login = () => {
+    window.location.href = "/login";
   };
 
-  const logout = async () => {
-    await apiRequest("POST", "/api/app/logout", {});
-    setUser(null);
+  // Sender brukeren til Auth0-utloggingen
+  const logout = () => {
+    window.location.href = "/logout";
   };
 
   const refreshUser = async () => {

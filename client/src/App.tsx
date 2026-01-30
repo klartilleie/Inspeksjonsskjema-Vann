@@ -11,6 +11,7 @@ import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
 
+// Denne funksjonen beskytter vanlige brukersider
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { user, isLoading } = useAuth();
 
@@ -22,6 +23,7 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
     );
   }
 
+  // Hvis ingen bruker er funnet etter Auth0-sjekken, vis Login-siden
   if (!user) {
     return <Login />;
   }
@@ -29,6 +31,7 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   return <Component />;
 }
 
+// Denne funksjonen beskytter Admin-sider
 function AdminRoute({ component: Component }: { component: React.ComponentType }) {
   const { user, isLoading } = useAuth();
 
@@ -61,15 +64,24 @@ function AdminRoute({ component: Component }: { component: React.ComponentType }
 function Router() {
   return (
     <Switch>
+      {/* 1. Vi definerer login-ruten separat for å unngå loopen */}
+      <Route path="/login" component={Login} />
+
+      {/* 2. Hovedsiden (Befaringsskjema) - lander her etter Auth0 callback */}
       <Route path="/">
         {() => <ProtectedRoute component={InspectionForm} />}
       </Route>
+
+      {/* 3. Admin-oversikt */}
       <Route path="/admin">
         {() => <AdminRoute component={AdminDashboard} />}
       </Route>
+
+      {/* 4. Spesifikke skjemaer */}
       <Route path="/skjema/:id">
         {() => <ProtectedRoute component={InspectionDetail} />}
       </Route>
+
       <Route component={NotFound} />
     </Switch>
   );
