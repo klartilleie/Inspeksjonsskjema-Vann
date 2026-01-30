@@ -4,27 +4,27 @@ import type { Express, Request, Response, NextFunction } from "express";
 const config = {
   authRequired: false,
   auth0Logout: true,
-  secret: process.env.AUTH0_SECRET,
-  baseURL: "https://inspeksjonsskjema-vann.onrender.com",
+  secret: process.env.AUTH0_SECRET || process.env.SESSION_SECRET,
+  baseURL: process.env.AUTH0_BASE_URL,
   clientID: process.env.AUTH0_CLIENT_ID,
+  clientSecret: process.env.AUTH0_CLIENT_SECRET, // Viktig: Denne kobler til Render-verdien
   issuerBaseURL: `https://${process.env.AUTH0_DOMAIN}`,
-  // DENNE LINJEN SENDER DEG VIDERE ETTER INNLOGGING:
   authorizationParams: {
     response_type: 'code',
   },
   routes: {
-    login: false, // Vi bruker vår egen knapp
-    callback: '/callback',
-    postLogoutRedirect: '/',
+    login: false,
   }
 };
 
 export async function setupAuth(app: Express) {
   app.use(auth(config));
 
-  // Vi lager en manuell rute for /login som tvinger videresending til forsiden etterpå
   app.get('/login', (req, res) => {
-    res.oidc.login({ returnTo: '/' }); 
+    res.oidc.login({ 
+      returnTo: '/', 
+      authorizationParams: { redirect_uri: `${process.env.AUTH0_BASE_URL}/callback` } 
+    });
   });
 }
 
