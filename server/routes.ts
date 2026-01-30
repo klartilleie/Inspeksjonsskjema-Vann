@@ -6,17 +6,16 @@ import { inspectionFormSchema } from "@shared/schema";
 import { generateInspectionPDF } from "./pdfGenerator";
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
-  // 1. Dette aktiverer Auth0-motoren
+  // 1. Aktiver Auth0
   await setupAuth(app);
 
-  // 2. Bruker-sjekk: Kobler Auth0 til din Admin-rolle i databasen
-  app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
+  // 2. Sjekk bruker og gi Admin-tilgang
+  app.get("/api/auth/user", async (req: any, res) => {
     try {
-      if (req.oidc && req.oidc.user) {
+      if (req.oidc && req.oidc.isAuthenticated()) {
         const email = req.oidc.user.email;
         let user = await storage.getUser(req.oidc.user.sub);
 
-        // Hvis du er admin-brukeren, oppretter vi deg i databasen hvis du ikke finnes
         if (email === "kundeservice@smarthjem.as" && (!user || user.role !== "admin")) {
           user = await storage.createUser({
             id: req.oidc.user.sub,
@@ -29,11 +28,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       }
       res.status(401).json({ message: "Ikke logget inn" });
     } catch (error) {
-      res.status(500).json({ message: "Feil ved henting av bruker" });
+      console.error("Auth-feil:", error);
+      res.status(500).json({ message: "Serverfeil" });
     }
   });
 
-  // 3. Data-rute: Henter listen over alle befaringer
+  // 3. Beskyttede ruter
   app.get("/api/inspections", isAuthenticated, async (req, res) => {
     const inspections = await storage.getAllInspections();
     res.json(inspections);
