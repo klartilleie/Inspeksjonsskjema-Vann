@@ -597,6 +597,7 @@ export default function InspectionForm() {
     if (!files || files.length === 0) return;
 
     setIsUploading(true);
+    const uploadTimeout = 120000;
 
     try {
       for (const file of Array.from(files)) {
@@ -609,28 +610,42 @@ export default function InspectionForm() {
 
         const base64Data = await base64Promise;
 
-        const response = await fetch("/api/upload", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ data: base64Data }),
-        });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), uploadTimeout);
 
-        if (!response.ok) {
-          throw new Error("Cloudinary opplasting feilet");
+        try {
+          const response = await fetch("/api/upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ data: base64Data }),
+            signal: controller.signal,
+          });
+
+          clearTimeout(timeoutId);
+
+          if (!response.ok) {
+            throw new Error("Cloudinary opplasting feilet");
+          }
+
+          const result = await response.json();
+          setUploadedImages((prev) => [...prev, result.url]);
+        } catch (error: any) {
+          clearTimeout(timeoutId);
+          if (error.name === 'AbortError') {
+            throw new Error("Opplasting tok for lang tid. Prøv med et mindre bilde.");
+          }
+          throw error;
         }
-
-        const result = await response.json();
-        setUploadedImages((prev) => [...prev, result.url]);
       }
 
       toast({
         title: "Bilder lastet opp",
         description: `${files.length} bilde(r) ble lastet opp til Cloudinary.`,
       });
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Feil ved opplasting",
-        description: "Kunne ikke laste opp bildet. Sjekk at Cloudinary er konfigurert.",
+        description: error.message || "Kunne ikke laste opp bildet. Sjekk at Cloudinary er konfigurert.",
         variant: "destructive",
       });
     } finally {
