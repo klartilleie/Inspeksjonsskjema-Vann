@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { setupAuth } from "./replitAuth";
 import { v2 as cloudinary } from 'cloudinary';
 import { Resend } from 'resend';
+import { generateInspectionPDF } from "./pdfGenerator";
 
 // Konfigurer Cloudinary
 cloudinary.config({
@@ -151,6 +152,30 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     } catch (error) {
       console.error("Feil ved sletting av inspeksjon:", error);
       res.status(500).json({ error: "Kunne ikke slette inspeksjon" });
+    }
+  });
+
+  // Generer PDF for en inspeksjon
+  app.get("/api/inspections/:id/pdf", async (req, res) => {
+    try {
+      const inspection = await storage.getInspection(req.params.id);
+      if (!inspection) {
+        return res.status(404).json({ error: "Inspeksjon ikke funnet" });
+      }
+
+      const doc = generateInspectionPDF(inspection);
+      
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `inline; filename="befaring-${inspection.customerName.replace(/[^a-zA-Z0-9æøåÆØÅ]/g, "_")}.pdf"`
+      );
+      
+      doc.pipe(res);
+      doc.end();
+    } catch (error) {
+      console.error("Feil ved generering av PDF:", error);
+      res.status(500).json({ error: "Kunne ikke generere PDF" });
     }
   });
 
