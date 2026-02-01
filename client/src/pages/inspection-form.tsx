@@ -609,7 +609,7 @@ export default function InspectionForm() {
 
         const base64Data = await base64Promise;
 
-        const response = await fetch("/api/cloudinary/upload", {
+        const response = await fetch("/api/upload", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ data: base64Data }),
