@@ -1571,13 +1571,17 @@ export default function InspectionForm() {
 
                   {uploadedImages.length > 0 && (
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-                      {uploadedImages.map((path, index) => (
+                      {uploadedImages.map((url, index) => (
                         <div
                           key={index}
-                          className="relative group rounded-lg overflow-visible bg-muted aspect-square flex items-center justify-center"
+                          className="relative group rounded-lg overflow-hidden bg-muted aspect-square"
                         >
-                          <Camera className="w-8 h-8 text-muted-foreground" />
-                          <span className="absolute bottom-2 left-2 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
+                          <img 
+                            src={url} 
+                            alt={`Bilde ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <span className="absolute bottom-2 left-2 text-xs text-white bg-black/60 px-2 py-1 rounded">
                             Bilde {index + 1}
                           </span>
                           <Button
