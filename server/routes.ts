@@ -50,5 +50,55 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // Opprett ny inspeksjon
+  app.post("/api/inspections", async (req: any, res) => {
+    try {
+      const inspection = await storage.createInspection(req.body);
+      res.status(201).json(inspection);
+    } catch (error) {
+      console.error("Feil ved opprettelse av inspeksjon:", error);
+      res.status(500).json({ error: "Kunne ikke opprette inspeksjon" });
+    }
+  });
+
+  // Hent alle inspeksjoner
+  app.get("/api/inspections", async (req, res) => {
+    try {
+      const allInspections = await storage.getAllInspections();
+      res.json(allInspections);
+    } catch (error) {
+      console.error("Feil ved henting av inspeksjoner:", error);
+      res.status(500).json({ error: "Kunne ikke hente inspeksjoner" });
+    }
+  });
+
+  // Hent en spesifikk inspeksjon
+  app.get("/api/inspections/:id", async (req, res) => {
+    try {
+      const inspection = await storage.getInspection(req.params.id);
+      if (!inspection) {
+        return res.status(404).json({ error: "Inspeksjon ikke funnet" });
+      }
+      res.json(inspection);
+    } catch (error) {
+      console.error("Feil ved henting av inspeksjon:", error);
+      res.status(500).json({ error: "Kunne ikke hente inspeksjon" });
+    }
+  });
+
+  // Slett en inspeksjon
+  app.delete("/api/inspections/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteInspection(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Inspeksjon ikke funnet" });
+      }
+      res.json({ message: "Inspeksjon slettet" });
+    } catch (error) {
+      console.error("Feil ved sletting av inspeksjon:", error);
+      res.status(500).json({ error: "Kunne ikke slette inspeksjon" });
+    }
+  });
+
   return httpServer;
 }
