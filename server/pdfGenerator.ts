@@ -1,5 +1,7 @@
 import PDFDocument from "pdfkit";
 import type { Inspection } from "@shared/schema";
+import https from "https";
+import http from "http";
 
 const translateValue = (value: string | null | undefined | boolean): string => {
   if (value === null || value === undefined) return "Ikke spesifisert";
@@ -22,7 +24,43 @@ const translateValue = (value: string | null | undefined | boolean): string => {
   return translations[value] || value;
 };
 
-export function generateInspectionPDF(inspection: Inspection): PDFKit.PDFDocument {
+async function fetchImageBuffer(url: string): Promise<Buffer | null> {
+  return new Promise((resolve) => {
+    const protocol = url.startsWith('https') ? https : http;
+    
+    const request = protocol.get(url, { timeout: 10000 }, (response) => {
+      if (response.statusCode === 301 || response.statusCode === 302) {
+        const redirectUrl = response.headers.location;
+        if (redirectUrl) {
+          fetchImageBuffer(redirectUrl).then(resolve);
+          return;
+        }
+      }
+      
+      if (response.statusCode !== 200) {
+        console.log(`Failed to fetch image: ${url}, status: ${response.statusCode}`);
+        resolve(null);
+        return;
+      }
+
+      const chunks: Buffer[] = [];
+      response.on('data', (chunk) => chunks.push(chunk));
+      response.on('end', () => {
+        const buffer = Buffer.concat(chunks);
+        resolve(buffer);
+      });
+      response.on('error', () => resolve(null));
+    });
+
+    request.on('error', () => resolve(null));
+    request.on('timeout', () => {
+      request.destroy();
+      resolve(null);
+    });
+  });
+}
+
+export async function generateInspectionPDF(inspection: Inspection): Promise<PDFKit.PDFDocument> {
   const doc = new PDFDocument({ 
     margin: 50,
     size: 'A4',
@@ -115,10 +153,7 @@ export function generateInspectionPDF(inspection: Inspection): PDFKit.PDFDocumen
   addField("Bilder lastet opp", inspection.imagesUploaded);
   
   if (inspection.imagePaths && inspection.imagePaths.length > 0) {
-    doc.fontSize(10).fillColor(labelColor).text("Bilde-URLer:");
-    inspection.imagePaths.forEach((path, index) => {
-      doc.fontSize(9).fillColor(textColor).text(`  ${index + 1}. ${path}`, { width: 495 });
-    });
+    doc.fontSize(10).fillColor(labelColor).text("Bildene er vedlagt på egne sider i dette dokumentet.");
     doc.moveDown(0.5);
   }
   
@@ -126,7 +161,6 @@ export function generateInspectionPDF(inspection: Inspection): PDFKit.PDFDocumen
     addField("Logistikkkommentarer", inspection.logisticsComments);
   }
 
-  // Tilbud/pris-seksjon
   if (inspection.offerTotal || inspection.biocleanerPrice) {
     checkPageBreak();
     addSection("6. Tilbud");
@@ -185,6 +219,41 @@ export function generateInspectionPDF(inspection: Inspection): PDFKit.PDFDocumen
     `Skjema-ID: ${inspection.id}`,
     { align: "center" }
   );
+
+  if (inspection.imagePaths && inspection.imagePaths.length > 0) {
+    for (let i = 0; i < inspection.imagePaths.length; i++) {
+      const imageUrl = inspection.imagePaths[i];
+      
+      doc.addPage();
+      
+      doc.fontSize(14).fillColor(primaryColor).text(`Vedlegg: Bilde ${i + 1} av ${inspection.imagePaths.length}`, { align: "center" });
+      doc.moveDown(0.5);
+      doc.fontSize(9).fillColor(labelColor).text(inspection.customerName, { align: "center" });
+      doc.moveDown(1);
+
+      try {
+        const imageBuffer = await fetchImageBuffer(imageUrl);
+        
+        if (imageBuffer && imageBuffer.length > 0) {
+          const pageWidth = doc.page.width - 100;
+          const pageHeight = doc.page.height - 200;
+          
+          doc.image(imageBuffer, 50, doc.y, {
+            fit: [pageWidth, pageHeight],
+            align: 'center',
+            valign: 'center'
+          });
+        } else {
+          doc.fontSize(10).fillColor(textColor).text("Kunne ikke laste bildet.", { align: "center" });
+          doc.fontSize(8).fillColor(labelColor).text(`URL: ${imageUrl}`, { align: "center" });
+        }
+      } catch (error) {
+        console.log(`Error embedding image: ${error}`);
+        doc.fontSize(10).fillColor(textColor).text("Feil ved lasting av bilde.", { align: "center" });
+        doc.fontSize(8).fillColor(labelColor).text(`URL: ${imageUrl}`, { align: "center" });
+      }
+    }
+  }
 
   const pages = doc.bufferedPageRange();
   for (let i = 0; i < pages.count; i++) {

@@ -163,7 +163,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         return res.status(404).json({ error: "Inspeksjon ikke funnet" });
       }
 
-      const doc = generateInspectionPDF(inspection);
+      const doc = await generateInspectionPDF(inspection);
       
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader(
