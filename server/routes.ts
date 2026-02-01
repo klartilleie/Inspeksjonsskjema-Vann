@@ -19,7 +19,7 @@ const resend = new Resend(process.env.resend_API);
 async function sendNotificationEmail(inspection: any) {
   try {
     await resend.emails.send({
-      from: 'Befaringsskjema <onboarding@resend.dev>',
+      from: 'Befaringsskjema <noreply@klartilleie.no>',
       to: ['kundeservice@smarthjem.as'],
       subject: `Nytt befaringsskjema: ${inspection.customerName}`,
       html: `
