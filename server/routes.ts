@@ -83,9 +83,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // Opprett ny inspeksjon
   app.post("/api/inspections", async (req: any, res) => {
     try {
-      // Konverter prisfelt til tall
+      // Konverter prisfelt til tall og sett standardverdier
+      const imagePaths = req.body.imagePaths || [];
       const data = {
         ...req.body,
+        imagePaths: imagePaths,
+        imageCount: imagePaths.length,
+        imagesUploaded: imagePaths.length > 0,
         biocleanerPrice: req.body.biocleanerPrice ? Number(req.body.biocleanerPrice) : null,
         styreskapPrice: req.body.styreskapPrice ? Number(req.body.styreskapPrice) : null,
         soknadUtslippPrice: req.body.soknadUtslippPrice ? Number(req.body.soknadUtslippPrice) : null,
@@ -96,7 +100,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         offerSum: req.body.offerSum ? Number(req.body.offerSum) : null,
         offerMva: req.body.offerMva ? Number(req.body.offerMva) : null,
         offerTotal: req.body.offerTotal ? Number(req.body.offerTotal) : null,
-        imageCount: Number(req.body.imageCount) || 0,
       };
       
       const inspection = await storage.createInspection(data);
