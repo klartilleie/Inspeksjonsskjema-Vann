@@ -80,6 +80,23 @@ export class DatabaseStorage implements IStorage {
       imageCount: data.imageCount,
       imagesUploaded: data.imagesUploaded,
       logisticsComments: data.logisticsComments,
+      mapMarkers: data.mapMarkers,
+      mapNotes: data.mapNotes,
+      biocleanerModel: data.biocleanerModel,
+      biocleanerType: data.biocleanerType,
+      biocleanerPrice: data.biocleanerPrice,
+      numberOfHomes: data.numberOfHomes,
+      styreskapSize: data.styreskapSize,
+      styreskapPrice: data.styreskapPrice,
+      soknadUtslippPrice: data.soknadUtslippPrice,
+      soknadDispensasjonPrice: data.soknadDispensasjonPrice,
+      innreguleringPrice: data.innreguleringPrice,
+      gravingPrice: data.gravingPrice,
+      fraktPrice: data.fraktPrice,
+      offerSum: data.offerSum,
+      offerMva: data.offerMva,
+      offerTotal: data.offerTotal,
+      offerComments: data.offerComments,
     }).returning();
     return inspection;
   }
