@@ -126,6 +126,56 @@ export function generateInspectionPDF(inspection: Inspection): PDFKit.PDFDocumen
     addField("Logistikkkommentarer", inspection.logisticsComments);
   }
 
+  // Tilbud/pris-seksjon
+  if (inspection.offerTotal || inspection.biocleanerPrice) {
+    checkPageBreak();
+    addSection("6. Tilbud");
+    
+    if (inspection.biocleanerModel) {
+      addField("Biocleaner modell", `${inspection.biocleanerModel} - ${inspection.biocleanerType || ''}`);
+      if (inspection.biocleanerPrice) {
+        addField("Biocleaner pris", `kr ${inspection.biocleanerPrice.toLocaleString('nb-NO')},-`);
+      }
+    }
+    if (inspection.styreskapSize) {
+      addField("Styreskap", inspection.styreskapSize);
+      if (inspection.styreskapPrice) {
+        addField("Styreskap pris", `kr ${inspection.styreskapPrice.toLocaleString('nb-NO')},-`);
+      }
+    }
+    if (inspection.soknadUtslippPrice) {
+      addField("Søknad om utslippstillatelse", `kr ${inspection.soknadUtslippPrice.toLocaleString('nb-NO')},-`);
+    }
+    if (inspection.soknadDispensasjonPrice) {
+      addField("Søknad om dispensasjon", `kr ${inspection.soknadDispensasjonPrice.toLocaleString('nb-NO')},-`);
+    }
+    if (inspection.innreguleringPrice) {
+      addField("Innregulering/oppstart/montering", `kr ${inspection.innreguleringPrice.toLocaleString('nb-NO')},-`);
+    }
+    if (inspection.gravingPrice) {
+      addField("Graving med singel", `kr ${inspection.gravingPrice.toLocaleString('nb-NO')},-`);
+    }
+    if (inspection.fraktPrice) {
+      addField("Frakt", `kr ${inspection.fraktPrice.toLocaleString('nb-NO')},-`);
+    }
+    
+    doc.moveDown(0.5);
+    if (inspection.offerSum) {
+      addField("Sum", `kr ${inspection.offerSum.toLocaleString('nb-NO')},-`);
+    }
+    if (inspection.offerMva) {
+      addField("Mva (25%)", `kr ${inspection.offerMva.toLocaleString('nb-NO')},-`);
+    }
+    if (inspection.offerTotal) {
+      doc.fontSize(12).fillColor(primaryColor).text(`FRA - Totalpris: kr ${inspection.offerTotal.toLocaleString('nb-NO')},-`);
+      doc.moveDown(0.5);
+    }
+    
+    if (inspection.offerComments) {
+      addField("Kommentarer til tilbudet", inspection.offerComments);
+    }
+  }
+
   doc.moveDown(1);
   doc.fontSize(9).fillColor(labelColor).text(
     `Opprettet: ${inspection.createdAt ? new Date(inspection.createdAt).toLocaleString("nb-NO") : "Ukjent"}`,

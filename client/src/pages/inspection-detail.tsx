@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import type { Inspection } from "@shared/schema";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
-import { ArrowLeft, User, MapPin, Mail, Phone, Calendar, Droplets, Thermometer, Plug, Wrench, Camera, FileDown } from "lucide-react";
+import { ArrowLeft, User, MapPin, Mail, Phone, Calendar, Droplets, Thermometer, Plug, Wrench, Camera, FileDown, Receipt, Map } from "lucide-react";
 import logoUrl from "@assets/Smart_Hjem_As_-_FinalizedLogoD2L5_(Transparent)-01_1769033291619.png";
 
 export default function InspectionDetail() {
@@ -306,6 +306,131 @@ export default function InspectionDetail() {
             )}
           </CardContent>
         </Card>
+
+        {(() => {
+          const markers = inspection.mapMarkers as unknown as Array<{id: string, type: string, position: [number, number]}> | null;
+          if (!markers || !Array.isArray(markers) || markers.length === 0) return null;
+          return (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Map className="h-5 w-5 text-muted-foreground" />
+                  <CardTitle>Situasjonsplan</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {markers.map((marker, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <Badge variant="outline" className="capitalize">{marker.type}</Badge>
+                      <span className="text-sm text-muted-foreground">
+                        Posisjon: {marker.position[0].toFixed(6)}, {marker.position[1].toFixed(6)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {inspection.mapNotes && (
+                  <div className="mt-4 pt-4 border-t">
+                    <p className="text-sm text-muted-foreground">Kartnotater</p>
+                    <p className="font-medium">{inspection.mapNotes}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })()}
+
+        {(inspection.offerTotal || inspection.biocleanerPrice) && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Receipt className="h-5 w-5 text-muted-foreground" />
+                <CardTitle>Tilbud</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {inspection.biocleanerModel && (
+                  <div className="flex justify-between items-center py-2 border-b">
+                    <div>
+                      <p className="font-medium">Biocleaner {inspection.biocleanerModel}</p>
+                      <p className="text-sm text-muted-foreground">{inspection.biocleanerType}</p>
+                    </div>
+                    {inspection.biocleanerPrice && (
+                      <p className="font-medium">kr {inspection.biocleanerPrice.toLocaleString('nb-NO')},-</p>
+                    )}
+                  </div>
+                )}
+                {inspection.styreskapSize && (
+                  <div className="flex justify-between items-center py-2 border-b">
+                    <p className="font-medium">Styreskap ({inspection.styreskapSize})</p>
+                    {inspection.styreskapPrice && (
+                      <p className="font-medium">kr {inspection.styreskapPrice.toLocaleString('nb-NO')},-</p>
+                    )}
+                  </div>
+                )}
+                {inspection.soknadUtslippPrice && (
+                  <div className="flex justify-between items-center py-2 border-b">
+                    <p>Søknad om utslippstillatelse</p>
+                    <p className="font-medium">kr {inspection.soknadUtslippPrice.toLocaleString('nb-NO')},-</p>
+                  </div>
+                )}
+                {inspection.soknadDispensasjonPrice && (
+                  <div className="flex justify-between items-center py-2 border-b">
+                    <p>Søknad om dispensasjon</p>
+                    <p className="font-medium">kr {inspection.soknadDispensasjonPrice.toLocaleString('nb-NO')},-</p>
+                  </div>
+                )}
+                {inspection.innreguleringPrice && (
+                  <div className="flex justify-between items-center py-2 border-b">
+                    <p>Innregulering/oppstart/montering</p>
+                    <p className="font-medium">kr {inspection.innreguleringPrice.toLocaleString('nb-NO')},-</p>
+                  </div>
+                )}
+                {inspection.gravingPrice && (
+                  <div className="flex justify-between items-center py-2 border-b">
+                    <p>Graving med singel</p>
+                    <p className="font-medium">kr {inspection.gravingPrice.toLocaleString('nb-NO')},-</p>
+                  </div>
+                )}
+                {inspection.fraktPrice && (
+                  <div className="flex justify-between items-center py-2 border-b">
+                    <p>Frakt</p>
+                    <p className="font-medium">kr {inspection.fraktPrice.toLocaleString('nb-NO')},-</p>
+                  </div>
+                )}
+
+                <div className="pt-4 space-y-2">
+                  {inspection.offerSum && (
+                    <div className="flex justify-between items-center">
+                      <p className="text-muted-foreground">Sum</p>
+                      <p className="font-medium">kr {inspection.offerSum.toLocaleString('nb-NO')},-</p>
+                    </div>
+                  )}
+                  {inspection.offerMva && (
+                    <div className="flex justify-between items-center">
+                      <p className="text-muted-foreground">Mva (25%)</p>
+                      <p className="font-medium">kr {inspection.offerMva.toLocaleString('nb-NO')},-</p>
+                    </div>
+                  )}
+                  {inspection.offerTotal && (
+                    <div className="flex justify-between items-center text-lg pt-2 border-t">
+                      <p className="font-semibold">FRA - Totalpris</p>
+                      <p className="font-bold text-primary">kr {inspection.offerTotal.toLocaleString('nb-NO')},-</p>
+                    </div>
+                  )}
+                </div>
+
+                {inspection.offerComments && (
+                  <div className="mt-4 pt-4 border-t">
+                    <p className="text-sm text-muted-foreground">Kommentarer til tilbudet</p>
+                    <p className="font-medium">{inspection.offerComments}</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="text-center text-sm text-muted-foreground">
           Opprettet: {inspection.createdAt && format(new Date(inspection.createdAt), "d. MMMM yyyy, HH:mm", { locale: nb })}
