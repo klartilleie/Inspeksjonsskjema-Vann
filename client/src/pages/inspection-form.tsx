@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { MapContainer, TileLayer, WMSTileLayer, Marker, Popup, useMapEvents, useMap, ScaleControl, Polyline, Tooltip } from "react-leaflet";
+import html2canvas from "html2canvas";
 import L from "leaflet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -247,6 +248,7 @@ export default function InspectionForm() {
   const [currentPipeColor, setCurrentPipeColor] = useState("#8B4513");
   const addressInputRef = useRef<HTMLInputElement>(null);
   const mapRef = useRef<L.Map | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
 
   const handleMarkerDrag = useCallback((markerId: string, newPosition: L.LatLng) => {
     setMarkers(prev => prev.map(m => 
@@ -657,7 +659,46 @@ export default function InspectionForm() {
     setUploadedImages((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const onSubmit = (data: ClientInspectionFormData) => {
+  const captureMapImage = async (): Promise<string | null> => {
+    if (!mapContainerRef.current) return null;
+    
+    try {
+      const canvas = await html2canvas(mapContainerRef.current, {
+        useCORS: true,
+        allowTaint: true,
+        scale: 2,
+        logging: false,
+      });
+      
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob((b) => resolve(b), 'image/png', 0.95);
+      });
+      
+      if (!blob) return null;
+      
+      const formData = new FormData();
+      formData.append('file', blob, 'situasjonsplan.png');
+      
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to upload map image');
+        return null;
+      }
+      
+      const result = await response.json();
+      return result.url;
+    } catch (error) {
+      console.error('Error capturing map:', error);
+      return null;
+    }
+  };
+
+  const onSubmit = async (data: ClientInspectionFormData) => {
     if (uploadedImages.length < 5) {
       toast({
         title: "Manglende bilder",
@@ -666,10 +707,20 @@ export default function InspectionForm() {
       });
       return;
     }
+    
+    toast({
+      title: "Lagrer kart...",
+      description: "Tar bilde av situasjonsplanen",
+    });
+    
+    const mapImageUrl = await captureMapImage();
+    
     const totals = calculateOfferTotals();
     const formDataWithExtras = {
       ...data,
       mapMarkers: markers,
+      mapPipeLines: pipeLines,
+      mapImage: mapImageUrl || undefined,
       offerSum: totals.sum,
       offerMva: totals.mva,
       offerTotal: totals.total,
@@ -1738,7 +1789,7 @@ export default function InspectionForm() {
                   </div>
                 )}
                 
-                <div className="h-[600px] rounded-lg overflow-hidden border">
+                <div ref={mapContainerRef} className="h-[600px] rounded-lg overflow-hidden border">
                   <MapContainer
                     center={mapCenter}
                     zoom={18}

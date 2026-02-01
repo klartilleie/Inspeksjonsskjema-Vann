@@ -220,6 +220,36 @@ export async function generateInspectionPDF(inspection: Inspection): Promise<PDF
     { align: "center" }
   );
 
+  if (inspection.mapImage) {
+    doc.addPage();
+    
+    doc.fontSize(14).fillColor(primaryColor).text("Vedlegg: Situasjonsplan", { align: "center" });
+    doc.moveDown(0.5);
+    doc.fontSize(9).fillColor(labelColor).text(inspection.customerName, { align: "center" });
+    doc.fontSize(9).fillColor(labelColor).text(inspection.customerAddress || "", { align: "center" });
+    doc.moveDown(1);
+
+    try {
+      const mapBuffer = await fetchImageBuffer(inspection.mapImage);
+      
+      if (mapBuffer && mapBuffer.length > 0) {
+        const pageWidth = doc.page.width - 100;
+        const pageHeight = doc.page.height - 200;
+        
+        doc.image(mapBuffer, 50, doc.y, {
+          fit: [pageWidth, pageHeight],
+          align: 'center',
+          valign: 'center'
+        });
+      } else {
+        doc.fontSize(10).fillColor(textColor).text("Kunne ikke laste kartet.", { align: "center" });
+      }
+    } catch (error) {
+      console.log(`Error embedding map image: ${error}`);
+      doc.fontSize(10).fillColor(textColor).text("Feil ved lasting av kart.", { align: "center" });
+    }
+  }
+
   if (inspection.imagePaths && inspection.imagePaths.length > 0) {
     for (let i = 0; i < inspection.imagePaths.length; i++) {
       const imageUrl = inspection.imagePaths[i];

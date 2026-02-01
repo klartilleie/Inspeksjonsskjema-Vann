@@ -309,7 +309,11 @@ export default function InspectionDetail() {
 
         {(() => {
           const markers = inspection.mapMarkers as unknown as Array<{id: string, type: string, position: [number, number]}> | null;
-          if (!markers || !Array.isArray(markers) || markers.length === 0) return null;
+          const hasMarkers = markers && Array.isArray(markers) && markers.length > 0;
+          const hasMapImage = !!inspection.mapImage;
+          
+          if (!hasMarkers && !hasMapImage) return null;
+          
           return (
             <Card>
               <CardHeader>
@@ -319,16 +323,28 @@ export default function InspectionDetail() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  {markers.map((marker, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <Badge variant="outline" className="capitalize">{marker.type}</Badge>
-                      <span className="text-sm text-muted-foreground">
-                        Posisjon: {marker.position[0].toFixed(6)}, {marker.position[1].toFixed(6)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                {hasMapImage && (
+                  <div className="mb-4">
+                    <img 
+                      src={inspection.mapImage!} 
+                      alt="Situasjonsplan" 
+                      className="w-full rounded-lg border shadow-sm"
+                    />
+                  </div>
+                )}
+                {hasMarkers && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground mb-2">Markører:</p>
+                    {markers!.map((marker, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <Badge variant="outline" className="capitalize">{marker.type}</Badge>
+                        <span className="text-sm text-muted-foreground">
+                          Posisjon: {marker.position[0].toFixed(6)}, {marker.position[1].toFixed(6)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {inspection.mapNotes && (
                   <div className="mt-4 pt-4 border-t">
                     <p className="text-sm text-muted-foreground">Kartnotater</p>
