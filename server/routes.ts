@@ -83,15 +83,32 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // Opprett ny inspeksjon
   app.post("/api/inspections", async (req: any, res) => {
     try {
-      const inspection = await storage.createInspection(req.body);
+      // Konverter prisfelt til tall
+      const data = {
+        ...req.body,
+        biocleanerPrice: req.body.biocleanerPrice ? Number(req.body.biocleanerPrice) : null,
+        styreskapPrice: req.body.styreskapPrice ? Number(req.body.styreskapPrice) : null,
+        soknadUtslippPrice: req.body.soknadUtslippPrice ? Number(req.body.soknadUtslippPrice) : null,
+        soknadDispensasjonPrice: req.body.soknadDispensasjonPrice ? Number(req.body.soknadDispensasjonPrice) : null,
+        innreguleringPrice: req.body.innreguleringPrice ? Number(req.body.innreguleringPrice) : null,
+        gravingPrice: req.body.gravingPrice ? Number(req.body.gravingPrice) : null,
+        fraktPrice: req.body.fraktPrice ? Number(req.body.fraktPrice) : null,
+        offerSum: req.body.offerSum ? Number(req.body.offerSum) : null,
+        offerMva: req.body.offerMva ? Number(req.body.offerMva) : null,
+        offerTotal: req.body.offerTotal ? Number(req.body.offerTotal) : null,
+        imageCount: Number(req.body.imageCount) || 0,
+      };
+      
+      const inspection = await storage.createInspection(data);
       
       // Send e-postvarsel til kundeservice
       sendNotificationEmail(inspection);
       
       res.status(201).json(inspection);
-    } catch (error) {
-      console.error("Feil ved opprettelse av inspeksjon:", error);
-      res.status(500).json({ error: "Kunne ikke opprette inspeksjon" });
+    } catch (error: any) {
+      console.error("Feil ved opprettelse av inspeksjon:", error?.message || error);
+      console.error("Stack:", error?.stack);
+      res.status(500).json({ error: "Kunne ikke opprette inspeksjon", details: error?.message });
     }
   });
 
