@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { LogIn } from "lucide-react";
+import smartHjemLogo from "@assets/Smart_Hjem_As_-_FinalizedLogoD2L5_(Transparent)-01_1769033291619.png";
 
 export default function LoginPage() {
   const handleLogin = () => {
@@ -13,7 +14,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md shadow-lg border-t-4 border-t-primary">
         <CardHeader className="text-center space-y-4">
           <img 
-            src="/assets/Smart_Hjem_As_-_FinalizedLogoD2L5_ (Transparent)-01_1708033291010-BeqUA8Y1.png" 
+            src={smartHjemLogo} 
             alt="Smart Hjem AS" 
             className="h-20 mx-auto"
           />
