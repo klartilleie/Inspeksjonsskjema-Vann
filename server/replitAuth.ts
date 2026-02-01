@@ -1,42 +1,27 @@
-import * as client from "openid-client";
-import { Strategy, type VerifyFunction } from "openid-client/passport";
-
-import passport from "passport";
+import { auth, requiresAuth } from "express-openid-connect";
+import type { Express, Request, Response, NextFunction } from "express";
 import session from "express-session";
-import type { Express, RequestHandler } from "express";
-import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
-import { storage } from "./storage";
 
-const getOidcConfig = memoize(
-  async () => {
-    return await client.discovery(
-      new URL(process.env.ISSUER_URL ?? "https://replit.com/oidc"),
-      process.env.REPL_ID!
-    );
-  },
-  { maxAge: 3600 * 1000 }
-);
+// Use the new Render database if available, fallback to Replit DATABASE_URL
+const databaseUrl = process.env.Inspeksjonsskjema_db || process.env.DATABASE_URL;
+const isRenderDatabase = !!process.env.Inspeksjonsskjema_db;
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000;
   const pgStore = connectPg(session);
-  
-  // Use the new Render database if available, fallback to Replit DATABASE_URL
-  const databaseUrl = process.env.Inspeksjonsskjema_db || process.env.DATABASE_URL;
-  const isRenderDatabase = !!process.env.Inspeksjonsskjema_db;
   
   const sessionStore = new pgStore({
     conString: databaseUrl,
     createTableIfMissing: false,
     ttl: sessionTtl,
     tableName: "sessions",
-    // Render database requires SSL
     conObject: isRenderDatabase ? {
       connectionString: databaseUrl,
       ssl: { rejectUnauthorized: false }
     } : undefined,
   });
+
   return session({
     secret: process.env.SESSION_SECRET!,
     store: sessionStore,
@@ -44,125 +29,70 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
       maxAge: sessionTtl,
     },
   });
 }
 
-function updateUserSession(
-  user: any,
-  tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers
-) {
-  user.claims = tokens.claims();
-  user.access_token = tokens.access_token;
-  user.refresh_token = tokens.refresh_token;
-  user.expires_at = user.claims?.exp;
-}
-
-async function upsertUser(claims: any) {
-  await storage.upsertUser({
-    id: claims["sub"],
-    email: claims["email"],
-    firstName: claims["first_name"],
-    lastName: claims["last_name"],
-    profileImageUrl: claims["profile_image_url"],
-  });
-}
+const config = {
+  authRequired: false,
+  auth0Logout: true,
+  secret: process.env.AUTH0_SECRET || process.env.SESSION_SECRET,
+  baseURL: process.env.AUTH0_BASE_URL,
+  clientID: process.env.AUTH0_CLIENT_ID,
+  clientSecret: process.env.AUTH0_CLIENT_SECRET,
+  issuerBaseURL: process.env.AUTH0_DOMAIN ? `https://${process.env.AUTH0_DOMAIN}` : undefined,
+  authorizationParams: {
+    response_type: 'code',
+  },
+  routes: {
+    login: false,
+  }
+};
 
 export async function setupAuth(app: Express) {
   app.set("trust proxy", 1);
   app.use(getSession());
-  app.use(passport.initialize());
-  app.use(passport.session());
-
-  const config = await getOidcConfig();
-
-  const verify: VerifyFunction = async (
-    tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
-    verified: passport.AuthenticateCallback
-  ) => {
-    const user = {};
-    updateUserSession(user, tokens);
-    await upsertUser(tokens.claims());
-    verified(null, user);
-  };
-
-  const registeredStrategies = new Set<string>();
-
-  const ensureStrategy = (domain: string) => {
-    const strategyName = `replitauth:${domain}`;
-    if (!registeredStrategies.has(strategyName)) {
-      const strategy = new Strategy(
-        {
-          name: strategyName,
-          config,
-          scope: "openid email profile offline_access",
-          callbackURL: `https://${domain}/api/callback`,
-        },
-        verify,
-      );
-      passport.use(strategy);
-      registeredStrategies.add(strategyName);
-    }
-  };
-
-  passport.serializeUser((user: Express.User, cb) => cb(null, user));
-  passport.deserializeUser((user: Express.User, cb) => cb(null, user));
-
-  app.get("/api/login", (req, res, next) => {
-    ensureStrategy(req.hostname);
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      prompt: "login consent",
-      scope: ["openid", "email", "profile", "offline_access"],
-    })(req, res, next);
-  });
-
-  app.get("/api/callback", (req, res, next) => {
-    ensureStrategy(req.hostname);
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      successReturnToOrRedirect: "/",
-      failureRedirect: "/api/login",
-    })(req, res, next);
-  });
-
-  app.get("/api/logout", (req, res) => {
-    req.logout(() => {
-      res.redirect(
-        client.buildEndSessionUrl(config, {
-          client_id: process.env.REPL_ID!,
-          post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
-        }).href
-      );
+  
+  // Only enable Auth0 if all required environment variables are set
+  if (config.baseURL && config.clientID && config.issuerBaseURL) {
+    app.use(auth(config));
+    
+    app.get('/api/auth0/login', (req, res) => {
+      (res as any).oidc.login({ 
+        returnTo: '/', 
+        authorizationParams: { redirect_uri: `${process.env.AUTH0_BASE_URL}/callback` } 
+      });
     });
-  });
+    
+    app.get('/api/auth0/logout', (req, res) => {
+      (res as any).oidc.logout({ returnTo: process.env.AUTH0_BASE_URL });
+    });
+    
+    app.get('/api/auth0/user', (req: any, res) => {
+      if (req.oidc && req.oidc.isAuthenticated()) {
+        const user = req.oidc.user;
+        return res.json({
+          id: user.sub,
+          email: user.email,
+          name: user.name,
+          picture: user.picture,
+        });
+      }
+      res.status(401).json({ error: "Ikke logget inn via Auth0" });
+    });
+  }
 }
 
-export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  const user = req.user as any;
-
-  if (!req.isAuthenticated() || !user.expires_at) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-
-  const now = Math.floor(Date.now() / 1000);
-  if (now <= user.expires_at) {
+export function isAuthenticated(req: Request, res: Response, next: NextFunction) {
+  // Check if user is authenticated via Auth0
+  if ((req as any).oidc && (req as any).oidc.isAuthenticated()) {
     return next();
   }
-
-  const refreshToken = user.refresh_token;
-  if (!refreshToken) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
-
-  try {
-    const config = await getOidcConfig();
-    const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
-    updateUserSession(user, tokenResponse);
+  // Check if user is authenticated via app session
+  if (req.session && (req.session as any).appUserId) {
     return next();
-  } catch (error) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
   }
-};
+  res.status(401).json({ message: "Unauthorized" });
+}
