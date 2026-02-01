@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./replitAuth";
 import { v2 as cloudinary } from 'cloudinary';
+import { Resend } from 'resend';
 
 // Konfigurer Cloudinary
 cloudinary.config({
@@ -10,6 +11,35 @@ cloudinary.config({
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
+
+// Konfigurer Resend for e-post
+const resend = new Resend(process.env.resend_API);
+
+async function sendNotificationEmail(inspection: any) {
+  try {
+    await resend.emails.send({
+      from: 'Befaringsskjema <onboarding@resend.dev>',
+      to: ['kundeservice@smarthjem.as'],
+      subject: `Nytt befaringsskjema: ${inspection.customerName}`,
+      html: `
+        <h2>Nytt befaringsskjema mottatt</h2>
+        <p><strong>Kunde:</strong> ${inspection.customerName}</p>
+        <p><strong>Adresse:</strong> ${inspection.customerAddress}</p>
+        <p><strong>E-post:</strong> ${inspection.customerEmail}</p>
+        <p><strong>Telefon:</strong> ${inspection.customerPhone}</p>
+        <p><strong>Utfylt av:</strong> ${inspection.reportFilledBy}</p>
+        <p><strong>Dato:</strong> ${inspection.inspectionDateTime}</p>
+        <p><strong>Antall bilder:</strong> ${inspection.imagePaths?.length || 0}</p>
+        ${inspection.offerTotal ? `<p><strong>Tilbud totalt:</strong> kr ${inspection.offerTotal.toLocaleString('nb-NO')},-</p>` : ''}
+        <hr>
+        <p>Se hele skjemaet i <a href="${process.env.AUTH0_BASE_URL || 'https://inspeksjonsskjema-vann.onrender.com'}/admin">admin-panelet</a>.</p>
+      `,
+    });
+    console.log('E-postvarsel sendt til kundeservice@smarthjem.as');
+  } catch (error) {
+    console.error('Feil ved sending av e-post:', error);
+  }
+}
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   await setupAuth(app);
@@ -54,6 +84,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.post("/api/inspections", async (req: any, res) => {
     try {
       const inspection = await storage.createInspection(req.body);
+      
+      // Send e-postvarsel til kundeservice
+      sendNotificationEmail(inspection);
+      
       res.status(201).json(inspection);
     } catch (error) {
       console.error("Feil ved opprettelse av inspeksjon:", error);
