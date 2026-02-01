@@ -400,6 +400,8 @@ export default function InspectionForm() {
       numberOfHomes: "1",
       styreskapSize: "small",
       styreskapPrice: STYRESKAP_OPTIONS[0].defaultPrice,
+      utehus: "nei",
+      utehusPrice: 0,
       soknadUtslippPrice: DEFAULT_PRICES.soknadUtslipp,
       soknadDispensasjonPrice: DEFAULT_PRICES.soknadDispensasjon,
       innreguleringPrice: DEFAULT_PRICES.innregulering,
@@ -416,6 +418,7 @@ export default function InspectionForm() {
   const watchBiocleanerType = form.watch("biocleanerType");
   const watchBiocleanerPrice = form.watch("biocleanerPrice");
   const watchStyreskapPrice = form.watch("styreskapPrice");
+  const watchUtehusPrice = form.watch("utehusPrice");
   const watchSoknadUtslippPrice = form.watch("soknadUtslippPrice");
   const watchSoknadDispensasjonPrice = form.watch("soknadDispensasjonPrice");
   const watchInnreguleringPrice = form.watch("innreguleringPrice");
@@ -425,6 +428,7 @@ export default function InspectionForm() {
   const calculateOfferTotals = () => {
     const sum = (watchBiocleanerPrice || 0) + 
                 (watchStyreskapPrice || 0) + 
+                (watchUtehusPrice || 0) +
                 (watchSoknadUtslippPrice || 0) + 
                 (watchSoknadDispensasjonPrice || 0) + 
                 (watchInnreguleringPrice || 0) + 
@@ -2123,6 +2127,56 @@ export default function InspectionForm() {
                                   type="number"
                                   className="w-28 text-right bg-muted"
                                   data-testid="input-styreskap-price"
+                                  readOnly
+                                  {...field}
+                                />
+                              </FormControl>
+                              <span className="text-sm text-muted-foreground">kr</span>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Utehus til styring</span>
+                      <div className="flex items-center gap-2">
+                        <FormField
+                          control={form.control}
+                          name="utehus"
+                          render={({ field }) => (
+                            <FormItem className="mb-0">
+                              <Select
+                                value={field.value || "nei"}
+                                onValueChange={(val) => {
+                                  field.onChange(val);
+                                  form.setValue("utehusPrice", val === "ja" ? 10000 : 0);
+                                }}
+                                data-testid="select-utehus"
+                              >
+                                <FormControl>
+                                  <SelectTrigger className="w-28">
+                                    <SelectValue placeholder="Velg" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="ja">Ja</SelectItem>
+                                  <SelectItem value="nei">Nei</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="utehusPrice"
+                          render={({ field }) => (
+                            <FormItem className="flex items-center gap-2 mb-0">
+                              <FormControl>
+                                <Input 
+                                  type="number"
+                                  className="w-28 text-right bg-muted"
+                                  data-testid="input-utehus-price"
                                   readOnly
                                   {...field}
                                 />

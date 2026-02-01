@@ -72,6 +72,14 @@ async function sendCustomerOfferEmail(inspection: any) {
         </tr>
       `;
     }
+    if (inspection.utehus === "ja" && inspection.utehusPrice) {
+      priceDetailsHtml += `
+        <tr>
+          <td style="padding: 8px 0; border-bottom: 1px solid #eee;">Utehus til styring</td>
+          <td style="padding: 8px 0; border-bottom: 1px solid #eee; text-align: right;">${formatPrice(inspection.utehusPrice)}</td>
+        </tr>
+      `;
+    }
     if (inspection.soknadUtslippPrice) {
       priceDetailsHtml += `
         <tr>
@@ -280,6 +288,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         imagesUploaded: imagePaths.length > 0,
         biocleanerPrice: req.body.biocleanerPrice ? Number(req.body.biocleanerPrice) : null,
         styreskapPrice: req.body.styreskapPrice ? Number(req.body.styreskapPrice) : null,
+        utehus: req.body.utehus || null,
+        utehusPrice: req.body.utehusPrice ? Number(req.body.utehusPrice) : null,
         soknadUtslippPrice: req.body.soknadUtslippPrice ? Number(req.body.soknadUtslippPrice) : null,
         soknadDispensasjonPrice: req.body.soknadDispensasjonPrice ? Number(req.body.soknadDispensasjonPrice) : null,
         innreguleringPrice: req.body.innreguleringPrice ? Number(req.body.innreguleringPrice) : null,
